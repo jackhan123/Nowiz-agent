@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nowiz - 所思，即所得；所见，即具身</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap">
+    <style>
+        /* ==================== 核心设计系统 ==================== */
+        :root {
+            --color-bg-primary: #000000;
+            --color-bg-secondary: #0a0a0a;
+            --color-bg-tertiary: #111111;
+            --color-border: rgba(255, 255, 255, 0.1);
+            --color-text-primary: #ffffff;
+            --color-text-secondary: rgba(255, 255, 255, 0.8);
+            --color-text-tertiary: rgba(255, 255, 255, 0.5);
+            --color-text-muted: rgba(255, 255, 255, 0.3);
+            --color-accent: #ffffff;
+            --color-accent-hover: #f0f0f0;
+            --transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            --radius-sm: 2px;
+            --radius-md: 4px;
+            --radius-lg: 8px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 64px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .mouse-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            transform: translate(-50%, -50%);
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--color-border);
+            padding: 16px 0;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-xl);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-menu {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 200;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 48px;
+        }
+
+        .nav-link {
+            color: var(--color-text-tertiary);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--color-text-primary);
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            color: #000000;
+            padding: 8px 24px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover {
+            background: #dddddd;
+            transform: translateY(-2px);
+        }
+
+        .main-container {
+            margin-top: 80px;
+            min-height: calc(100vh - 80px);
+        }
+
+        .layer-section {
+            display: none;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-2xl) var(--spacing-xl);
+            animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .layer-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            margin-bottom: var(--spacing-2xl);
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 200;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+
+        .title-number {
+            font-family: serif;
+            font-style: italic;
+            font-size: 24px;
+            color: var(--color-text-tertiary);
+            margin-right: 16px;
+        }
+
+        .section-subtitle {
+            color: var(--color-text-tertiary);
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        /* ==================== Layer 1: Creation ==================== */
+        .chat-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            height: calc(100vh - 350px);
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--color-border);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-md);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-xl);
+        }
+
+        .message {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .message-content {
+            max-width: 70%;
+            border-left: 2px solid var(--color-border);
+            padding: 8px 24px;
+        }
+
+        .user .message-content {
+            border-left: none;
+            border-right: 2px solid #ffffff;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .message-text {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            line-height: 1.8;
+        }
+
+        .chat-input-container {
+            padding: var(--spacing-xl);
+            border-top: 1px solid var(--color-border);
+        }
+
+        .input-wrapper {
+            position: relative;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--color-border);
+            padding: 16px;
+        }
+
+        .chat-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            min-height: 24px;
+        }
+
+        .input-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .report-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #ffffff;
+            padding: 24px;
+            margin: 24px 0;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==================== Layer 2: Hardware ==================== */
+        .hardware-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .bom-panel {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--color-border);
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bom-textarea {
+            width: 100%;
+            height: 200px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            padding: 16px;
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            resize: none;
+        }
+
+        .architecture-preview {
+            width: 100%;
+            min-height: 400px;
+            border: 1px solid var(--color-border);
+            background: radial-gradient(circle at center, rgba(255,255,255,0.05) 0%, transparent 70%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .arch-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .hw-3d-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+        }
+
+        .hw-3d-core {
+            width: 120px;
+            height: 120px;
+            background: #111;
+            border: 2px solid #fff;
+            box-shadow: 0 0 30px rgba(255,255,255,0.2), inset 0 0 15px rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            transform: rotateX(20deg) rotateY(-20deg);
+            z-index: 5;
+        }
+
+        .hw-3d-module {
+            position: absolute;
+            width: 80px;
+            height: 60px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(5px);
+            padding: 8px;
+            font-size: 10px;
+            transform: translateZ(50px);
+            transition: var(--transition);
+        }
+
+        .hw-3d-module:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #fff;
+            transform: translateZ(80px) scale(1.1);
+        }
+
+        .bom-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+        }
+
+        .bom-table th {
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--color-text-tertiary);
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .bom-table td {
+            padding: 16px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .total-cost {
+            font-size: 32px;
+            font-weight: 200;
+            text-align: right;
+            margin-top: 32px;
+        }
+
+        .module-library {
+            margin-top: 64px;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .module-card {
+            border: 1px solid var(--color-border);
+            padding: 20px;
+            transition: var(--transition);
+        }
+
+        .module-card:hover {
+            border-color: #ffffff;
+            background: rgba(255,255,255,0.03);
+        }
+
+        /* ==================== Layer 3: Realize ==================== */
+        .realize-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 32px;
+            height: calc(100vh - 300px);
+        }
+
+        .instruction-panel {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .instruction-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+        }
+
+        .instruction-input-area {
+            padding: 20px;
+            border-top: 1px solid var(--color-border);
+            background: rgba(255,255,255,0.01);
+        }
+
+        .manufacturing-preview {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid var(--color-border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .hammer-container {
+            font-size: 80px;
+            margin-bottom: 24px;
+            transition: var(--transition);
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+        }
+
+        .hammer-striking {
+            animation: hammerStrike 0.6s infinite ease-in-out;
+        }
+
+        @keyframes hammerStrike {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-45deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .manufacturing-status {
+            font-size: 18px;
+            font-weight: 200;
+            letter-spacing: 4px;
+            color: var(--color-text-tertiary);
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .status-completed {
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.4);
+        }
+
+        .code-stream {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 10px;
+            color: rgba(255,255,255,0.2);
+            overflow: hidden;
+            pointer-events: none;
+            mask-image: linear-gradient(to top, black, transparent);
+            padding: 20px;
+        }
+
+        .code-line {
+            white-space: pre;
+            margin-bottom: 4px;
+            animation: scrollCode 8s linear infinite;
+        }
+
+        @keyframes scrollCode {
+            from { transform: translateY(100%); }
+            to { transform: translateY(-100%); }
+        }
+
+        ::-webkit-scrollbar { width: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <div class="mouse-glow" id="mouseGlow"></div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-text">NOWIZ</span>
+            </div>
+            <div class="nav-menu">
+                <a class="nav-link active" data-layer="layer1" onclick="switchLayer('layer1')">Creation</a>
+                <a class="nav-link" data-layer="layer2" onclick="switchLayer('layer2')">Hardware</a>
+                <a class="nav-link" data-layer="layer3" onclick="switchLayer('layer3')">Realize</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Layer 1: Creation -->
+        <section id="layer1" class="layer-section active">
+            <div class="section-header">
+                <h1 class="section-title"><span class="title-number">01</span>描述创意</h1>
+                <p class="section-subtitle">NATURAL LANGUAGE TO HARDWARE PROTOCOL</p>
+            </div>
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai">
+                        <div class="message-avatar">AI</div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                你好。我是 Nowiz 创意引导引擎。<br><br>
+                                请描述你想要构建的硬件想法，我将协助你完成从功能定义到组件选型的全过程。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <textarea id="userInput" class="chat-input" placeholder="输入你的创意构思..." rows="1"></textarea>
+                        <div class="input-footer">
+                            <span style="font-size: 10px; color: var(--color-text-muted);">ENTER TO SEND</span>
+                            <button class="btn-primary" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Layer 2: Hardware -->
+        <section id="layer2" class="layer-section">
+            <div class="section-header">
+                <h1 class="section-title"><span class="title-number">02</span>硬件选型</h1>
+                <p class="section-subtitle">BOM GENERATION & COMPONENT ANALYSIS</p>
+            </div>
+            <div class="hardware-layout">
+                <div class="bom-panel">
+                    <h3 style="font-size: 14px; letter-spacing: 1px;">REQUIREMENT SPECIFICATION</h3>
+                    <textarea id="bomInput" class="bom-textarea" placeholder="在此粘贴需求报告..."></textarea>
+                    <button class="btn-primary" style="width: 100%; margin-bottom: 32px;" onclick="generateBOM()">生成完整清单</button>
+                    
+                    <h3 style="font-size: 14px; margin-bottom: 16px; letter-spacing: 1px;">SYSTEM BILL OF MATERIALS</h3>
+                    <div id="bomResultArea" style="margin-bottom: 32px;">
+                        <p style="color: var(--color-text-muted); font-size: 12px; text-align: center; padding: 40px;">等待输入分析...</p>
+                    </div>
+                </div>
+                <div class="bom-panel" style="background: rgba(255,255,255,0.01);">
+                    <h3 style="font-size: 14px; margin-bottom: 16px; letter-spacing: 1px;">ARCHITECTURE PREVIEW</h3>
+                    
+                    <!-- 拼装指南输入区域 -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 8px; display: block;">拼装指南输入（支持从BOM复制或手动输入）</label>
+                        <textarea id="assemblyInput" class="bom-textarea" placeholder="输入BOM清单或装备描述..." style="height: 120px;"></textarea>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button class="btn-primary" onclick="copyBOMToAssembly()" style="flex: 1; padding: 10px;">
+                            📋 复制BOM到指南
+                        </button>
+                        <button class="btn-primary" onclick="generateAssemblyGuide()" style="flex: 2; padding: 10px;">
+                            🛠️ 生成拼装指南
+                        </button>
+                    </div>
+                    
+                    <!-- 拼装指南输出区域 -->
+                    <div class="architecture-preview" id="archPreview">
+                        <div class="arch-label">ASSEMBLY GUIDE OUTPUT</div>
+                        <div id="archDiagram" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 11px;">
+                            等待生成拼装指南...
+                        </div>
+                    </div>
+                    
+                    <!-- 一键制造按钮 -->
+                    <button class="btn-primary" style="width: 100%; margin-top: 20px;" onclick="teleportToRealizeWithAssembly()">
+                        🚀 一键制造
+                    </button>
+                </div>
+            </div>
+            <div class="module-library">
+                <h3 style="font-size: 18px; font-weight: 200; border-bottom: 1px solid var(--color-border); padding-bottom: 16px;">硬件模块库 / MODULE_LIBRARY</h3>
+                <div class="module-grid" id="staticLibrary"></div>
+            </div>
+        </section>
+
+        <!-- Layer 3: Realize -->
+        <section id="layer3" class="layer-section">
+            <div class="section-header">
+                <h1 class="section-title"><span class="title-number">03</span>开始制造</h1>
+                <p class="section-subtitle">RASPBERRY PI ECOSYSTEM - EMBEDDED SYSTEM INTEGRATION</p>
+            </div>
+            <div class="realize-layout">
+                <div class="instruction-panel">
+                    <div id="realizeMessages" class="instruction-messages">
+                        <div style="margin-bottom: 16px; color: var(--color-text-muted);">[SYSTEM] 环境就绪。树莓派核心已连接。</div>
+                        <div id="realizeContextInfo" style="margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); font-size: 11px; border-left: 2px solid #fff;">
+                            等待同步 Hardware 实验室数据...
+                        </div>
+                        <div style="margin-bottom: 10px;">请输入具体的执行逻辑指令（例如：👍开启风扇，👇关闭风扇）：</div>
+                    </div>
+                    <div class="instruction-input-area">
+                        <textarea id="instructionInput" class="chat-input" placeholder="例如：当摄像头检测到拇指向上时，打开 LED 灯..." style="min-height: 80px; margin-bottom: 12px; border: 1px solid var(--color-border); padding: 12px; background: rgba(0,0,0,0.2);"></textarea>
+                        <button id="startManufactureBtn" class="btn-primary" style="width: 100%;" onclick="startManufacture()">开始制造</button>
+                    </div>
+                </div>
+                <div class="manufacturing-preview">
+                    <div class="arch-label">MANUFACTURING_PROCESS_MONITOR</div>
+                    <div id="hammer" class="hammer-container">🔨</div>
+                    <div id="manufactureStatus" class="manufacturing-status">IDLE_WAITING_FOR_COMMAND</div>
+                    <div id="codeStream" class="code-stream" style="display: none;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /* ==================== 核心配置 ==================== */
+        const API_CONFIG = {
+            apiKey: 'via-backend', 
+            endpoint: '/api/ai/chat',
+            model: 'qwen-plus'
+        };
+
+        const SYSTEM_PROMPT = `你是一位资深硬件产品经理。你的任务是引导用户完善硬件创意需求。
+交互规范：
+1. 引导流程：通过提问逐步确定核心功能、交互方式、成本预算等。
+2. 提问形式：每次提议必须提供清晰的 A、B、C、D 选项。用户可以直接输入字母进行选择。
+3. 禁止符号：严禁在对话中使用 Markdown 符号，如禁止使用 **、##、###、__、* 等。请使用纯文本排版。
+4. 强制约束：在最后生成报告时，如果用户没有指定主控，默认推荐树莓派(Raspberry Pi)生态。
+
+结束条件：当信息收集完整后，输出 JSON 格式：
+{
+    "status": "completed",
+    "project_name": "项目名称",
+    "summary": "项目核心摘要",
+    "full_report": "详细需求文档（纯文本）"
+}`;
+
+        let conversationHistory = [];
+        let currentRequirementReport = "";
+        let currentBOMData = null;
+
+        /* ==================== 导航与切换 ==================== */
+        function switchLayer(layerId) {
+            document.querySelectorAll('.layer-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            
+            const targetLayer = document.getElementById(layerId);
+            if (targetLayer) targetLayer.classList.add('active');
+            
+            const navLink = document.querySelector(`.nav-link[data-layer="${layerId}"]`);
+            if (navLink) navLink.classList.add('active');
+        }
+
+        /* ==================== Layer 1: Creation ==================== */
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if(!text) return;
+
+            addMessage(text, 'user');
+            input.value = '';
+            conversationHistory.push({ role: 'user', content: text });
+
+            const aiMsgDiv = addMessage("", 'ai');
+            const textElement = aiMsgDiv.querySelector('.message-text');
+            let fullContent = "";
+
+            try {
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversationHistory],
+                        stream: true
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(line.substring(6));
+                                const content = json.choices[0].delta.content || "";
+                                fullContent += content;
+                                
+                                // 检查 fullContent 是否包含 JSON 结构的开始（处理流式输出中可能出现的各种情况）
+                                const jsonStartIndex = fullContent.indexOf('{');
+                                
+                                if (jsonStartIndex === -1) {
+                                    // 还没有 JSON，正常展示文本
+                                    textElement.innerText = fullContent;
+                                } else {
+                                    // 已经开始出现 JSON 结构，展示非代码的视觉反馈
+                                    const leadingText = fullContent.substring(0, jsonStartIndex).trim();
+                                    
+                                    textElement.innerHTML = `
+                                        ${leadingText ? `<div>${leadingText}</div>` : ''}
+                                        <div style="border-left: 2px solid #fff; padding: 10px 15px; background: rgba(255,255,255,0.02); margin-top: 10px;">
+                                            <div style="font-size: 11px; color: var(--color-text-muted); letter-spacing: 2px; margin-bottom: 8px;">FINALIZING STRATEGIC REPORT</div>
+                                            <div style="height: 1px; width: 100%; background: rgba(255,255,255,0.1); position: relative; overflow: hidden;">
+                                                <div style="position: absolute; height: 100%; width: 50%; background: #fff; animation: loading 1.5s infinite ease-in-out;"></div>
+                                            </div>
+                                        </div>
+                                        <style>
+                                            @keyframes loading {
+                                                0% { left: -50%; }
+                                                100% { left: 100%; }
+                                            }
+                                        </style>
+                                    `;
+                                }
+                                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                if (fullContent.includes('"status": "completed"')) {
+                    const match = fullContent.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        const result = JSON.parse(match[0]);
+                        currentRequirementReport = result.full_report;
+                        textElement.innerText = `分析完成：${result.project_name}\n\n${result.summary}`;
+                        
+                        const card = document.createElement('div');
+                        card.className = 'report-card';
+                        card.innerHTML = `
+                            <h4 style="margin-bottom:12px; font-weight:400;">STRATEGIC_PLAN_READY</h4>
+                            <p style="font-size:12px; color:var(--color-text-tertiary); margin-bottom:20px;">硬件方案已锁定。准备进入实验室进行物料匹配。</p>
+                            <button class="btn-primary" onclick="teleportToHardware()">🚀 传送至 HARDWARE</button>
+                        `;
+                        document.getElementById('chatMessages').appendChild(card);
+                        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                    }
+                } else {
+                    conversationHistory.push({ role: 'assistant', content: fullContent });
+                }
+            } catch (e) { 
+                console.error(e);
+                textElement.innerText = "ERROR: 无法触达 AI 核心。请检查网络或 API Key。"; 
+            }
+        }
+
+        function addMessage(text, sender) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.innerHTML = `
+                <div class="message-avatar">${sender === 'ai' ? 'AI' : 'ME'}</div>
+                <div class="message-content">
+                    <div class="message-text">${text}</div>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            return div;
+        }
+
+        function teleportToHardware() {
+            document.getElementById('bomInput').value = currentRequirementReport;
+            switchLayer('layer2');
+        }
+
+        /* ==================== Layer 2: Hardware ==================== */
+        async function generateBOM() {
+            const input = document.getElementById('bomInput').value;
+            const resArea = document.getElementById('bomResultArea');
+            const archArea = document.getElementById('archDiagram');
+            
+            resArea.innerHTML = '<div id="bomStreamingText" style="color:var(--color-text-secondary); font-size:12px; font-family:monospace; white-space:pre-wrap;"></div>';
+            const streamingText = document.getElementById('bomStreamingText');
+            archArea.innerHTML = '正在计算拓扑结构...';
+
+            let fullContent = "";
+
+            try {
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: [
+                            { role: 'system', content: '你是一个硬件工程师。请根据需求生成JSON格式的BOM清单和系统架构。必须推荐树莓派生态。格式：{"items":[{"name":"元件","spec":"规格","price":10}],"architecture":{"core":"树莓派 5","modules":[{"name":"模块1","type":"Sensor"}]}}' },
+                            { role: 'user', content: input }
+                        ],
+                        stream: true
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(line.substring(6));
+                                const content = json.choices[0].delta.content || "";
+                                fullContent += content;
+                                
+                                // 视觉优化：不展示原始 JSON 代码，展示处理状态
+                                streamingText.innerHTML = `
+                                    <div style="margin-top:40px; text-align:center;">
+                                        <div style="font-size:14px; color:#fff; margin-bottom:16px; letter-spacing:2px; animation: pulse 1.5s infinite;">SYSTEM ANALYZING...</div>
+                                        <div style="font-family:monospace; font-size:10px; color:var(--color-text-muted); line-height:2;">
+                                            > PARSING ARCHITECTURE<br>
+                                            > MATCHING COMPONENTS<br>
+                                            > CALCULATING SPECIFICATIONS<br>
+                                            > OPTIMIZING BOM STRUCTURE
+                                        </div>
+                                    </div>
+                                    <style>
+                                        @keyframes pulse {
+                                            0% { opacity: 0.4; }
+                                            50% { opacity: 1; }
+                                            100% { opacity: 0.4; }
+                                        }
+                                    </style>
+                                `;
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                const match = fullContent.match(/\{[\s\S]*\}/);
+                if (match) {
+                    const result = JSON.parse(match[0]);
+                    currentBOMData = result;
+                    let html = '<table class="bom-table"><thead><tr><th>Component</th><th>Spec</th><th>Price</th></tr></thead><tbody>';
+                    let total = 0;
+                    result.items.forEach(i => {
+                        html += `<tr><td>${i.name}</td><td>${i.spec}</td><td>¥${i.price}</td></tr>`;
+                        total += i.price;
+                    });
+                    html += `</tbody></table><div class="total-cost">¥ ${total.toFixed(2)}</div>`;
+                    
+                    // 添加复制按钮到拼装指南
+                    html += `
+                        <div style="margin-top: 20px;">
+                            <button class="btn-outline" onclick="copyBOMToAssembly()" style="width: 100%;">
+                                📋 复制到拼装指南
+                            </button>
+                        </div>
+                    `;
+                    
+                    resArea.innerHTML = html;
+                }
+            } catch (e) { 
+                resArea.innerHTML = '<p style="color:#ff4444; text-align:center; margin-top:100px;">BOM_GENERATION_FAILED</p>'; 
+            }
+        }
+
+        function renderAssemblyGuide(bomData) {
+            if (!bomData || !bomData.items) return;
+            
+            let guideHtml = `
+                <div style="font-family: 'SF Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--color-text-secondary);">
+                    <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border);">
+                        <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 8px;">HARDWARE ASSEMBLY GUIDE</div>
+                        <div>基于推荐的设备清单，请按照以下步骤进行系统组装：</div>
+                    </div>
+            `;
+
+            bomData.items.forEach((item, index) => {
+                const step = index + 1;
+                guideHtml += `
+                    <div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.02); border-left: 2px solid var(--color-border);">
+                        <div style="color: #ffffff; font-weight: 600; margin-bottom: 6px;">STEP ${step}: ${item.name}</div>
+                        <div style="color: var(--color-text-tertiary); margin-bottom: 4px;">规格: ${item.spec}</div>
+                        <div style="color: var(--color-text-muted); font-size: 10px;">数量: ${item.qty || 1} | 单价: ¥${item.price}</div>
+                    </div>
+                `;
+            });
+
+            guideHtml += `
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--color-border);">
+                    <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 8px;">FINAL INTEGRATION</div>
+                    <div style="color: var(--color-text-secondary); line-height: 1.5;">
+                        1. 将主控板 (${bomData.architecture?.core || 'Raspberry Pi'}) 固定在底座上<br>
+                        2. 按照I2C地址顺序连接传感器模块<br>
+                        3. 通过PWM引脚连接执行器设备<br>
+                        4. 供电检查：确保所有模块电压匹配<br>
+                        5. 上电测试：运行诊断程序验证通信
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('archDiagram').innerHTML = guideHtml;
+        }
+
+        // 拼装指南相关的变量和函数
+        let assemblyInputContent = "";
+
+        function copyBOMToAssembly() {
+            const bomArea = document.getElementById('bomResultArea');
+            const bomText = bomArea.innerText;
+            
+            // 提取BOM表格中的文本内容
+            if (bomText && bomText.includes("¥")) {
+                assemblyInputContent = `当前BOM清单：\n${bomText}`;
+                document.getElementById('assemblyInput').value = assemblyInputContent;
+                showNotification("BOM清单已复制到拼装指南", "success");
+            } else {
+                showNotification("请先生成BOM清单", "warning");
+            }
+        }
+
+        async function generateAssemblyGuide() {
+            const input = document.getElementById('assemblyInput').value.trim();
+            if (!input) {
+                showNotification("请输入或复制BOM清单到拼装指南", "warning");
+                return;
+            }
+
+            const diagramArea = document.getElementById('archDiagram');
+            diagramArea.innerHTML = '<div style="color: var(--color-text-tertiary); text-align: center; padding: 40px;">正在生成精简拼装指南...</div>';
+
+            try {
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: [
+                            { 
+                                role: 'system', 
+                                content: `你是一位资深硬件工程师。请根据提供的BOM清单或装备信息，生成精简、实用的硬件拼装指南。
+
+要求：
+1. 输出必须结构化、步骤清晰
+2. 每个步骤要具体可操作
+3. 避免冗长描述，重点突出关键操作
+4. 使用纯文本，禁止Markdown符号
+5. 总步骤控制在5-8步内
+
+格式：
+步骤1：[操作名称]
+[具体操作说明]
+
+步骤2：[操作名称]
+[具体操作说明]
+
+...以此类推` 
+                            },
+                            { role: 'user', content: input }
+                        ],
+                        stream: true
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(line.substring(6));
+                                const content = json.choices[0].delta.content || "";
+                                fullContent += content;
+                                
+                                // 实时显示生成进度
+                                diagramArea.innerHTML = `
+                                    <div style="font-family: 'SF Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--color-text-secondary); white-space: pre-wrap;">
+                                        ${fullContent}
+                                    </div>
+                                `;
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                if (fullContent) {
+                    assemblyInputContent = fullContent;
+                    showNotification("拼装指南生成完成", "success");
+                }
+            } catch (e) {
+                console.error(e);
+                diagramArea.innerHTML = '<div style="color: #ff4444; text-align: center; padding: 40px;">拼装指南生成失败</div>';
+                showNotification("生成失败，请重试", "error");
+            }
+        }
+
+        function showNotification(message, type = "info") {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 10000;
+                padding: 12px 20px; border-radius: 4px; font-size: 12px;
+                background: ${type === 'success' ? 'rgba(255,255,255,0.1)' : type === 'error' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.05)'};
+                border: 1px solid ${type === 'success' ? '#ffffff' : type === 'error' ? '#ff4444' : 'var(--color-border)'};
+                color: ${type === 'error' ? '#ff4444' : '#ffffff'};
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
+        function teleportToRealizeWithAssembly() {
+            const contextInfo = document.getElementById('realizeContextInfo');
+            const assemblyContent = document.getElementById('assemblyInput').value.trim();
+            
+            if (contextInfo && assemblyContent) {
+                // 将BOM清单和拼装指南都同步到Realize页面
+                const fullContext = `硬件配置：${currentBOMData ? currentBOMData.architecture.core + ' + ' + currentBOMData.architecture.modules.length + ' 个模组' : '未生成BOM'}\n\n拼装指南：\n${assemblyContent}`;
+                contextInfo.innerHTML = fullContext.replace(/\n/g, '<br>');
+            }
+            switchLayer('layer3'); 
+        }
+
+        function teleportToRealize() { 
+            const contextInfo = document.getElementById('realizeContextInfo');
+            if (currentBOMData) {
+                contextInfo.innerHTML = `已同步：${currentBOMData.architecture.core} + ${currentBOMData.architecture.modules.length} 个模组`;
+            }
+            switchLayer('layer3'); 
+        }
+
+        /* ==================== Layer 3: Realize ==================== */
+        function startManufacture() {
+            const instr = document.getElementById('instructionInput').value.trim();
+            if (!instr) {
+                alert("请输入制造指令细节");
+                return;
+            }
+
+            const status = document.getElementById('manufactureStatus');
+            const hammer = document.getElementById('hammer');
+            const codeStream = document.getElementById('codeStream');
+            const btn = document.getElementById('startManufactureBtn');
+
+            btn.disabled = true;
+            status.innerHTML = 'PROCESSING_FIRMWARE...';
+            status.classList.remove('status-completed');
+            hammer.classList.add('hammer-striking');
+            codeStream.style.display = 'block';
+            codeStream.innerHTML = '';
+
+            const mockCodes = [
+                "import RPi.GPIO as GPIO",
+                "import time",
+                "GPIO.setmode(GPIO.BCM)",
+                "LED_PIN = 18",
+                "GPIO.setup(LED_PIN, GPIO.OUT)",
+                "def trigger_logic(signal):",
+                "    if signal == 'THUMBS_UP':",
+                "        GPIO.output(LED_PIN, GPIO.HIGH)",
+                "    else:",
+                "        GPIO.output(LED_PIN, GPIO.LOW)",
+                "while True:",
+                "    data = sensor.read()",
+                "    trigger_logic(data)"
+            ];
+
+            mockCodes.forEach((line, i) => {
+                setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.className = 'code-line';
+                    div.textContent = `[${new Date().toLocaleTimeString()}] ${line}`;
+                    codeStream.appendChild(div);
+                }, i * 300);
+            });
+
+            setTimeout(() => {
+                hammer.classList.remove('hammer-striking');
+                status.innerHTML = '已经开发完成，快去试试吧';
+                status.classList.add('status-completed');
+                btn.disabled = false;
+            }, 5000);
+        }
+
+        /* ==================== 视觉辅助 ==================== */
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; 
+        canvas.height = window.innerHeight;
+
+        function animateBg() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            for(let i=0; i<50; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, 1, 0, Math.PI*2);
+                ctx.fill();
+            }
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.getElementById('mouseGlow');
+            glow.style.left = e.clientX + 'px';
+            glow.style.top = e.clientY + 'px';
+        });
+
+        /* ==================== 静态硬件库填充 ==================== */
+        const staticModules = [
+            { type: 'Controller', name: 'ESP32-S3 WROOM', price: '¥ 18.50' },
+            { type: 'Sensor', name: 'IMU MPU6050', price: '¥ 8.20' },
+            { type: 'Sensor', name: 'ToF VL53L0X', price: '¥ 24.00' },
+            { type: 'Display', name: 'OLED 0.96" I2C', price: '¥ 12.00' },
+            { type: 'Actuator', name: 'SG90 Servo', price: '¥ 6.50' },
+            { type: 'Power', name: 'Li-Po 500mAh', price: '¥ 15.00' }
+        ];
+
+        const libraryGrid = document.getElementById('staticLibrary');
+        staticModules.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'module-card';
+            card.innerHTML = `
+                <div class="module-type">${m.type}</div>
+                <div class="module-name">${m.name}</div>
+                <div class="module-price">${m.price}</div>
+            `;
+            libraryGrid.appendChild(card);
+        });
+
+        // 快捷发送
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

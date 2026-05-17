@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 硬件实验室 - 用 AI 设计你的硬件</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 56px;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            font-size: 20px;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .step.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 8px 20px rgba(255,255,255,0.3);
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .step.active .step-number {
+            background: #667eea;
+            color: white;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.3);
+            margin-bottom: 32px;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .box-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .box-desc {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            flex: 1;
+            padding: 18px 24px;
+            border: 2px solid #e5e7eb;
+            border-radius: 14px;
+            font-size: 17px;
+            transition: all 0.3s;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        textarea {
+            min-height: 120px;
+            line-height: 1.6;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 18px 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .examples-label {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .example-tag {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .example-tag:hover {
+            background: #e5e7eb;
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .requirement-result {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 24px;
+            animation: slideUp 0.6s ease;
+        }
+
+        .requirement-result h2 {
+            font-size: 32px;
+            color: #1f2937;
+            margin-bottom: 24px;
+        }
+
+        .dimension {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-radius: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .dimension-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dimension-content {
+            color: #4b5563;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .copy-hint {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 24px;
+            animation: pulse 2s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .copy-hint button {
+            background: white;
+            color: #10b981;
+            margin-top: 16px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .copy-hint button:hover {
+            background: #f0fdf4;
+        }
+
+        .result {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 24px;
+            animation: slideUp 0.6s ease;
+        }
+
+        .result h2 {
+            font-size: 36px;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .overview {
+            font-size: 18px;
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .section {
+            margin-bottom: 28px;
+            padding: 24px;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-radius: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h3 {
+            font-size: 22px;
+            color: #374151;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .item {
+            margin-bottom: 14px;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateX(4px);
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 6px;
+            font-size: 16px;
+        }
+
+        .item-desc {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            font-size: 14px;
+            color: #4b5563;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .total {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            text-align: right;
+            padding-top: 20px;
+            margin-top: 20px;
+            border-top: 3px solid #667eea;
+        }
+
+        .meta-info {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .meta-item strong {
+            color: #374151;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border-left: 4px solid #dc2626;
+            font-weight: 500;
+        }
+
+        .disclaimer {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            padding: 20px 24px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .disclaimer strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 36px; }
+            .step-indicator { flex-direction: column; gap: 12px; }
+            .input-group { flex-direction: column; }
+            button { width: 100%; justify-content: center; }
+            .result { padding: 24px; }
+            table { font-size: 12px; }
+            th, td { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="badge">
+                <span>✨</span>
+                <span>AI 硬件实验室</span>
+            </div>
+            <h1>用 AI 设计你的硬件</h1>
+            <p class="subtitle">两步走：先完善需求，再生成 BOM 清单</p>
+        </div>
+
+        <!-- 步骤指示器 -->
+        <div class="step-indicator">
+            <div class="step active" id="step1Indicator">
+                <div class="step-number">1</div>
+                <span>需求完善</span>
+            </div>
+            <div class="step" id="step2Indicator">
+                <div class="step-number">2</div>
+                <span>采购推荐</span>
+            </div>
+        </div>
+
+        <!-- 第一步：需求完善 -->
+        <div id="step1Box" class="search-box">
+            <div class="box-title">步骤 1: 告诉我你想做什么</div>
+            <div class="box-desc">输入简单的想法，AI 会帮你从多个维度完善需求</div>
+            
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="例如：我想做一个水晶球" 
+                    autocomplete="off"
+                />
+                <button onclick="generateRequirement()" id="step1Btn">
+                    <span>🧠</span>
+                    <span>AI 完善需求</span>
+                </button>
+            </div>
+
+            <div class="examples">
+                <span class="examples-label">试试：</span>
+                <span class="example-tag" onclick="setExample('水晶球')">水晶球</span>
+                <span class="example-tag" onclick="setExample('智能台灯')">智能台灯</span>
+                <span class="example-tag" onclick="setExample('宠物喂食器')">宠物喂食器</span>
+                <span class="example-tag" onclick="setExample('桌面时钟')">桌面时钟</span>
+            </div>
+
+            <div id="error1" class="error hidden"></div>
+        </div>
+
+        <div id="loading1" class="loading hidden">
+            <div class="spinner"></div>
+            <p class="loading-text">AI 正在完善需求中...</p>
+        </div>
+
+        <div id="requirementResult" class="hidden"></div>
+
+        <!-- 第二步：BOM 生成 -->
+        <div id="step2Box" class="search-box hidden">
+            <div class="box-title">步骤 2: 生成采购清单</div>
+            <div class="box-desc">将上面完善的需求粘贴到这里，AI 会生成详细的 BOM 清单</div>
+            
+            <textarea 
+                id="refinedRequirement" 
+                placeholder="请粘贴步骤 1 生成的完善需求..."
+            ></textarea>
+
+            <button onclick="generateBOM()" id="step2Btn" style="width: 100%; justify-content: center; margin-top: 16px;">
+                <span>📦</span>
+                <span>生成 BOM 清单</span>
+            </button>
+
+            <div id="error2" class="error hidden"></div>
+        </div>
+
+        <div id="loading2" class="loading hidden">
+            <div class="spinner"></div>
+            <p class="loading-text">AI 正在生成 BOM 清单...</p>
+        </div>
+
+        <div id="bomResult" class="hidden"></div>
+    </div>
+
+    <script>
+        // 配置：阿里云通义千问 API
+        const API_CONFIG = {
+            apiKey: '', // 从环境变量或配置中获取
+            endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+            model: 'qwen-plus'
+        };
+
+        const REQUIREMENT_PROMPT = `你是一位资深硬件产品经理，擅长需求分析和产品定义。
+
+任务：用户会输入一个简单的想法（如"我想做一个水晶球"），你需要从以下 6 个维度自动丰富需求，输出结构化的详细需求。
+
+输出维度（严格 JSON 格式）：
+{
+  "project_name": "项目名称",
+  "user_input": "用户原始输入",
+  "dimensions": {
+    "core_function": {
+      "title": "核心功能",
+      "content": "判断该物品的核心用途（装饰/互动/实用工具/科技展示等），并详细描述主要功能点"
+    },
+    "form_spec": {
+      "title": "形态规格",
+      "content": "建议尺寸（mm）、材质选择（玻璃/树脂/亚克力/金属等）、是否透明、是否带底座、外观风格等"
+    },
+    "interaction": {
+      "title": "交互方式",
+      "content": "是否需要灯光效果、投影功能、语音交互、触控操作、手机 APP 联动、传感器响应等"
+    },
+    "difficulty": {
+      "title": "技术难度",
+      "content": "区分三个等级：入门级（新手可做，无需编程）/ 进阶级（需基础电子知识和简单编程）/ 专业级（需要完整的硬件+软件开发能力）。并说明需要掌握的技能"
+    },
+    "budget": {
+      "title": "成本预算",
+      "content": "给出三个档位的配置建议：\\n- 低成本版（<100元）：基础功能配置\\n- 中等版（100-300元）：平衡性价比\\n- 高配版（>300元）：完整功能体验"
+    },
+    "additional": {
+      "title": "附加需求",
+      "content": "考虑是否便携、是否可充电、是否支持 DIY 定制图案/文字、是否需要防水、是否需要无线连接等扩展功能"
+    }
+  }
+}
+
+要求：
+1. 输出必须是严格的 JSON 格式，不要有其他文字
+2. 每个维度的 content 要具体、实用、可落地
+3. 根据用户输入的物品特性合理推断需求
+4. 语言简洁专业，易于理解`;
+
+        const BOM_PROMPT = `你是一位资深硬件工程师，擅长嵌入式系统设计和硬件选型。
+
+任务：基于用户提供的完善需求，生成详细硬件方案和 BOM 清单。
+
+输出格式（严格 JSON，不要有其他文字）：
+{
+  "solution": {
+    "project_name": "项目名称",
+    "overview": "方案概述（2-3句话）",
+    "mcu": {
+      "model": "具体型号（如 ESP32-S3-WROOM-1）",
+      "reason": "选择理由"
+    },
+    "sensors": [
+      {"name": "传感器名称", "model": "具体型号", "purpose": "用途说明"}
+    ],
+    "peripherals": [
+      {"name": "外设名称", "model": "具体型号", "interface": "接口类型"}
+    ],
+    "power": {
+      "input": "输入方式",
+      "battery": "电池方案",
+      "management": "电源管理芯片"
+    },
+    "industrial_design": {
+      "enclosure": "外壳材料",
+      "dimensions": "大概尺寸",
+      "features": ["设计特点1", "设计特点2"]
+    }
+  },
+  "bom_items": [
+    {
+      "category": "分类（主控芯片/传感器/显示模块/电源模块/结构件/辅料）",
+      "part_name": "零件名称（具体到型号，如 WS2812B-2020 而非 LED）",
+      "model": "完整型号",
+      "spec": "关键规格",
+      "function": "功能描述",
+      "quantity": 1,
+      "unit_price": 28.00,
+      "supplier": "推荐供应商（立创商城/淘宝）"
+    }
+  ],
+  "total_cost": 156.50,
+  "difficulty": "初级/中级/高级",
+  "assembly_time": "2-4小时"
+}
+
+要求：
+1. 零件必须具体（如"WS2812B-2020 幻彩灯珠"而非"LED"）
+2. 价格基于 2024-2025 年淘宝/立创商城实际行情
+3. BOM 要包含所有必需元件（杜邦线、螺丝、辅料等）
+4. 优先推荐易采购、有中文资料的元件`;
+
+        let refinedRequirementText = '';
+
+        function setExample(text) {
+            document.getElementById('userInput').value = text;
+        }
+
+        async function generateRequirement() {
+            const input = document.getElementById('userInput').value.trim();
+            const errorDiv = document.getElementById('error1');
+            const loadingDiv = document.getElementById('loading1');
+            const resultDiv = document.getElementById('requirementResult');
+            const btn = document.getElementById('step1Btn');
+
+            if (!input) {
+                errorDiv.textContent = '❌ 请输入你想做的物品';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loadingDiv.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_CONFIG.apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: [
+                            { role: 'system', content: REQUIREMENT_PROMPT },
+                            { role: 'user', content: `我想做一个${input}` }
+                        ],
+                        temperature: 0.7,
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const content = data.choices[0]?.message?.content;
+
+                if (!content) {
+                    throw new Error('AI 返回内容为空');
+                }
+
+                const result = JSON.parse(content);
+
+                if (!result.dimensions) {
+                    throw new Error('AI 返回数据不完整');
+                }
+
+                displayRequirement(result);
+            } catch (error) {
+                console.error('生成错误:', error);
+                errorDiv.textContent = `❌ ${error.message || '生成失败，请重试'}`;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                loadingDiv.classList.add('hidden');
+                btn.disabled = false;
+            }
+        }
+
+        function displayRequirement(data) {
+            const dims = data.dimensions;
+            
+            // 生成用于复制的文本
+            refinedRequirementText = `# ${data.project_name}
+
+原始需求：${data.user_input}
+
+## ${dims.core_function.title}
+${dims.core_function.content}
+
+## ${dims.form_spec.title}
+${dims.form_spec.content}
+
+## ${dims.interaction.title}
+${dims.interaction.content}
+
+## ${dims.difficulty.title}
+${dims.difficulty.content}
+
+## ${dims.budget.title}
+${dims.budget.content}
+
+## ${dims.additional.title}
+${dims.additional.content}`;
+
+            const html = `
+                <div class="requirement-result">
+                    <h2>📋 ${data.project_name} - 需求分析</h2>
+                    
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>🎯</span>
+                            <span>${dims.core_function.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.core_function.content}</div>
+                    </div>
+
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>📐</span>
+                            <span>${dims.form_spec.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.form_spec.content}</div>
+                    </div>
+
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>🎮</span>
+                            <span>${dims.interaction.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.interaction.content}</div>
+                    </div>
+
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>⚙️</span>
+                            <span>${dims.difficulty.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.difficulty.content.replace(/\n/g, '<br>')}</div>
+                    </div>
+
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>💰</span>
+                            <span>${dims.budget.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.budget.content.replace(/\n/g, '<br>')}</div>
+                    </div>
+
+                    <div class="dimension">
+                        <div class="dimension-title">
+                            <span>✨</span>
+                            <span>${dims.additional.title}</span>
+                        </div>
+                        <div class="dimension-content">${dims.additional.content}</div>
+                    </div>
+
+                    <div class="copy-hint">
+                        <div>🎉 需求已完善！请复制到下方"采购推荐"框中</div>
+                        <button onclick="copyAndProceed()">
+                            <span>📋</span>
+                            <span>一键复制并跳转到步骤 2</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('requirementResult').innerHTML = html;
+            document.getElementById('requirementResult').classList.remove('hidden');
+
+            // 显示步骤 2
+            document.getElementById('step2Box').classList.remove('hidden');
+            
+            // 滚动到结果
+            setTimeout(() => {
+                document.getElementById('requirementResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function copyAndProceed() {
+            // 复制到剪贴板
+            navigator.clipboard.writeText(refinedRequirementText);
+            
+            // 自动填充到步骤 2
+            document.getElementById('refinedRequirement').value = refinedRequirementText;
+            
+            // 更新步骤指示器
+            document.getElementById('step1Indicator').classList.remove('active');
+            document.getElementById('step2Indicator').classList.add('active');
+            
+            // 滚动到步骤 2
+            setTimeout(() => {
+                document.getElementById('step2Box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+            
+            // 提示
+            alert('✅ 已复制需求并自动填充到步骤 2！');
+        }
+
+        async function generateBOM() {
+            const input = document.getElementById('refinedRequirement').value.trim();
+            const errorDiv = document.getElementById('error2');
+            const loadingDiv = document.getElementById('loading2');
+            const resultDiv = document.getElementById('bomResult');
+            const btn = document.getElementById('step2Btn');
+
+            if (!input) {
+                errorDiv.textContent = '❌ 请粘贴步骤 1 完善的需求';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            errorDiv.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            loadingDiv.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_CONFIG.apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: [
+                            { role: 'system', content: BOM_PROMPT },
+                            { role: 'user', content: `基于以下需求生成硬件方案和 BOM 清单：\n\n${input}` }
+                        ],
+                        temperature: 0.7,
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const content = data.choices[0]?.message?.content;
+
+                if (!content) {
+                    throw new Error('AI 返回内容为空');
+                }
+
+                const result = JSON.parse(content);
+
+                if (!result.solution || !result.bom_items) {
+                    throw new Error('AI 返回数据不完整');
+                }
+
+                displayBOM(result);
+            } catch (error) {
+                console.error('生成错误:', error);
+                errorDiv.textContent = `❌ ${error.message || '生成失败，请重试'}`;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                loadingDiv.classList.add('hidden');
+                btn.disabled = false;
+            }
+        }
+
+        function displayBOM(data) {
+            const sol = data.solution;
+            const bom = data.bom_items;
+
+            let html = `
+                <div class="result">
+                    <h2>${sol.project_name}</h2>
+                    <p class="overview">${sol.overview}</p>
+
+                    <div class="section">
+                        <h3><span>🖥️</span> 核心主控</h3>
+                        <div class="item">
+                            <div class="item-title">${sol.mcu.model}</div>
+                            <div class="item-desc">${sol.mcu.reason}</div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3><span>📡</span> 传感器</h3>
+                        ${sol.sensors.map(s => `
+                            <div class="item">
+                                <div class="item-title">${s.name} (${s.model})</div>
+                                <div class="item-desc">${s.purpose}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="section">
+                        <h3><span>🔌</span> 外设</h3>
+                        ${sol.peripherals.map(p => `
+                            <div class="item">
+                                <div class="item-title">${p.name} (${p.model})</div>
+                                <div class="item-desc">接口: ${p.interface}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="section">
+                        <h3><span>🔋</span> 电源管理</h3>
+                        <div class="item">
+                            <div><strong>输入:</strong> ${sol.power.input}</div>
+                            <div><strong>电池:</strong> ${sol.power.battery}</div>
+                            <div><strong>管理:</strong> ${sol.power.management}</div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3><span>🎨</span> 工业设计</h3>
+                        <div class="item">
+                            <div><strong>外壳:</strong> ${sol.industrial_design.enclosure}</div>
+                            <div><strong>尺寸:</strong> ${sol.industrial_design.dimensions}</div>
+                            <div><strong>特点:</strong> ${sol.industrial_design.features.join('、')}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result">
+                    <h2>📦 BOM 清单</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>分类</th>
+                                <th>零件名称</th>
+                                <th>型号</th>
+                                <th>规格</th>
+                                <th>数量</th>
+                                <th>单价</th>
+                                <th>小计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bom.map(item => `
+                                <tr>
+                                    <td>${item.category}</td>
+                                    <td>${item.part_name}</td>
+                                    <td>${item.model}</td>
+                                    <td>${item.spec}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>¥${item.unit_price.toFixed(2)}</td>
+                                    <td>¥${(item.unit_price * item.quantity).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="total">总成本: ¥${data.total_cost.toFixed(2)}</div>
+                    
+                    <div class="meta-info">
+                        <div class="meta-item">
+                            <span>⚙️</span>
+                            <span><strong>制作难度:</strong> ${data.difficulty}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>⏱️</span>
+                            <span><strong>组装时间:</strong> ${data.assembly_time}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>🛒</span>
+                            <span><strong>推荐采购:</strong> 立创商城 / 淘宝</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="disclaimer">
+                    <strong>⚠️ 免责声明</strong>
+                    本方案由 AI 生成，仅供参考。实际制作前请咨询专业人士，注意用电安全。价格基于市场行情估算，以实际采购为准。
+                </div>
+            `;
+
+            document.getElementById('bomResult').innerHTML = html;
+            document.getElementById('bomResult').classList.remove('hidden');
+
+            // 滚动到结果
+            setTimeout(() => {
+                document.getElementById('bomResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // 回车键触发
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                generateRequirement();
+            }
+        });
+
+        // 页面加载完成
+        window.addEventListener('load', () => {
+            console.log('🚀 AI 硬件实验室 V2 已加载');
+            console.log('💡 两步走：先完善需求，再生成 BOM');
+        });
+    </script>
+</body>
+</html>

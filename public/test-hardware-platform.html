@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>硬件平台测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+        }
+        textarea, input {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 通用硬件平台测试</h1>
+    
+    <!-- 硬件代码生成测试 -->
+    <div class="section">
+        <h2>1. 硬件代码生成测试</h2>
+        <textarea id="requirementInput" rows="3" placeholder="输入硬件需求，如：我想做一个AI占卜水晶球">我想做一个AI占卜水晶球</textarea>
+        <button onclick="testGenerateHardware()">🔧 生成硬件代码</button>
+        <button onclick="testLamp()">💡 测试台灯</button>
+        <button onclick="testFan()">🌀 测试风扇</button>
+        <div id="generateResult" class="result"></div>
+    </div>
+    
+    <!-- 水晶球控制测试 -->
+    <div class="section">
+        <h2>2. 水晶球控制测试</h2>
+        <div class="control-panel">
+            <button onclick="testDivination()">🔮 开始占卜</button>
+            <button onclick="testToggleVoice()">🔊 切换语音</button>
+            <button onclick="testGetStatus()">📊 获取状态</button>
+        </div>
+        <div id="crystalResult" class="result"></div>
+    </div>
+    
+    <!-- 实时日志 -->
+    <div class="section">
+        <h2>3. 实时日志</h2>
+        <button onclick="clearLogs()">🗑️ 清空日志</button>
+        <div id="logs" class="result"></div>
+    </div>
+
+    <script>
+        let logHistory = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logHistory.unshift(logEntry);
+            
+            // 保持最近20条日志
+            if (logHistory.length > 20) {
+                logHistory = logHistory.slice(0, 20);
+            }
+            
+            updateLogsDisplay();
+            console.log(logEntry);
+        }
+        
+        function updateLogsDisplay() {
+            document.getElementById('logs').innerHTML = logHistory.join('\n');
+        }
+        
+        function clearLogs() {
+            logHistory = [];
+            updateLogsDisplay();
+        }
+        
+        // 测试硬件代码生成
+        async function testGenerateHardware() {
+            const requirement = document.getElementById('requirementInput').value;
+            if (!requirement.trim()) {
+                log('❌ 请输入硬件需求', 'error');
+                return;
+            }
+            
+            log('🔧 开始生成硬件代码...', 'info');
+            
+            try {
+                const response = await fetch('/api/ai/generate-hardware', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userRequirement: requirement
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ 硬件代码生成成功: ${result.hardware_type}`, 'success');
+                    log(`📁 文件名: ${result.code.filename}`, 'info');
+                    log(`🔌 MQTT主题: ${result.mqtt_topics.commands}`, 'info');
+                    
+                    // 显示结果
+                    document.getElementById('generateResult').innerHTML = 
+                        `<span class="success">✅ 生成成功</span>\n\n` +
+                        `硬件类型: ${result.hardware_type}\n` +
+                        `文件名: ${result.code.filename}\n` +
+                        `依赖: ${result.code.dependencies.join(', ')}\n` +
+                        `MQTT主题: ${result.mqtt_topics.commands}\n\n` +
+                        `安装步骤:\n${result.code.setup_instructions.join('\n')}\n\n` +
+                        `Python代码已自动下载`;
+                    
+                    // 自动下载代码
+                    if (result.code.python) {
+                        const blob = new Blob([result.code.python], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = result.code.filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        log(`📥 已下载: ${result.code.filename}`, 'success');
+                    }
+                } else {
+                    log(`❌ 生成失败: ${result.error}`, 'error');
+                    if (result.suggestion) {
+                        log(`💡 建议: ${result.suggestion}`, 'info');
+                    }
+                }
+            } catch (error) {
+                log(`❌ 请求失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试台灯
+        async function testLamp() {
+            document.getElementById('requirementInput').value = '我要手势控制台灯';
+            await testGenerateHardware();
+        }
+        
+        // 测试风扇
+        async function testFan() {
+            document.getElementById('requirementInput').value = '做个手势控制的风扇';
+            await testGenerateHardware();
+        }
+        
+        // 水晶球控制函数
+        async function testDivination() {
+            log('🔮 开始占卜...', 'info');
+            
+            try {
+                const response = await fetch('/api/crystal-ball', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'start_divination',
+                        device_id: 'crystal-ball-001'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ 占卜成功: ${result.fortune}`, 'success');
+                    log(`🔊 语音状态: ${result.voice_enabled ? '开启' : '关闭'}`, 'info');
+                    log(`📊 总占卜次数: ${result.total_divinations}`, 'info');
+                    
+                    document.getElementById('crystalResult').innerHTML = 
+                        `<span class="success">✅ 占卜完成</span>\n\n` +
+                        `占卜结果: ${result.fortune}\n` +
+                        `语音播报: ${result.voice_enabled ? '开启' : '关闭'}\n` +
+                        `总次数: ${result.total_divinations}`;
+                } else {
+                    log(`❌ 占卜失败: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 占卜请求失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testToggleVoice() {
+            log('🔊 切换语音状态...', 'info');
+            
+            try {
+                const response = await fetch('/api/crystal-ball', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'toggle_voice',
+                        device_id: 'crystal-ball-001'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ 语音切换成功: ${result.voice_enabled ? '开启' : '关闭'}`, 'success');
+                } else {
+                    log(`❌ 语音切换失败: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 语音切换请求失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testGetStatus() {
+            log('📊 获取水晶球状态...', 'info');
+            
+            try {
+                const response = await fetch('/api/crystal-ball', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_status',
+                        device_id: 'crystal-ball-001'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const status = result.status;
+                    log(`✅ 状态获取成功`, 'success');
+                    log(`📜 上次占卜: ${status.last_fortune || '无'}`, 'info');
+                    log(`🔊 语音状态: ${status.voice_enabled ? '开启' : '关闭'}`, 'info');
+                    log(`💡 LED状态: ${status.led_on ? '开启' : '关闭'}`, 'info');
+                    log(`📊 总占卜次数: ${status.total_divinations}`, 'info');
+                    
+                    document.getElementById('crystalResult').innerHTML = 
+                        `<span class="success">✅ 水晶球状态</span>\n\n` +
+                        `上次占卜: ${status.last_fortune || '无'}\n` +
+                        `语音播报: ${status.voice_enabled ? '开启' : '关闭'}\n` +
+                        `LED灯: ${status.led_on ? '开启' : '关闭'}\n` +
+                        `总占卜次数: ${status.total_divinations}`;
+                } else {
+                    log(`❌ 状态获取失败: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 状态获取请求失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载完成后初始化
+        window.onload = function() {
+            log('🚀 硬件平台测试页面加载完成', 'success');
+            log('💡 你可以测试硬件代码生成、水晶球控制等功能', 'info');
+        };
+    </script>
+</body>
+</html>

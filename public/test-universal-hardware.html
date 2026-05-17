@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试通用硬件平台</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .input-area {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 通用硬件平台测试</h1>
+    
+    <div class="input-area">
+        <h3>输入你的硬件需求：</h3>
+        <textarea id="requirementInput" placeholder="例如：我想做一个水晶球，可以实现触摸开始AI占卜，占卜完以后可以把结果语音播报出来"></textarea>
+        <br>
+        <button onclick="testManufacturing()">🚀 开始制造</button>
+        <button onclick="clearResult()">🗑️ 清空结果</button>
+    </div>
+    
+    <div id="result" class="result" style="display: none;">
+        <h3>制造结果：</h3>
+        <div id="resultContent"></div>
+    </div>
+
+    <script>
+        async function testManufacturing() {
+            const input = document.getElementById('requirementInput').value.trim();
+            if (!input) {
+                alert('请输入硬件需求');
+                return;
+            }
+
+            const requirementData = {
+                project_name: '智能硬件项目',
+                core_function: input,
+                form_spec: '用户描述的硬件外观',
+                interaction: '用户描述的交互方式',
+                additional: '用户描述的特殊需求',
+                difficulty: '中等',
+                estimated_time: '5分钟'
+            };
+
+            try {
+                console.log('发送请求:', JSON.stringify(requirementData, null, 2));
+                
+                const response = await fetch('/api/hardware/manufacture', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requirement: requirementData
+                    })
+                });
+
+                console.log('响应状态:', response.status);
+                
+                const result = await response.json();
+                console.log('响应结果:', result);
+
+                displayResult(result);
+
+            } catch (error) {
+                console.error('请求失败:', error);
+                displayResult({ error: '请求失败: ' + error.message });
+            }
+        }
+
+        function displayResult(result) {
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultDiv.style.display = 'block';
+            resultContent.textContent = JSON.stringify(result, null, 2);
+        }
+
+        function clearResult() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('requirementInput').value = '';
+        }
+
+        // 添加示例文本
+        document.getElementById('requirementInput').value = '我想做一个水晶球，可以实现触摸开始AI占卜，占卜完以后可以把结果语音播报出来';
+    </script>
+</body>
+</html>
