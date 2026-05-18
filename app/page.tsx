@@ -281,14 +281,19 @@ export default function HomePage() {
         }
       }
 
-      const match = fullContent.match(/\\{[\\s\\S]*\\}/);
+      const match = fullContent.match(/\{[\s\S]*\}/);
       if (match) {
-        const result = JSON.parse(match[0]);
-        let total = 0;
-        result.items.forEach(i => total += i.price);
-        result.total = total;
-        setBomResult(result);
-        setBomStatus('success');
+        try {
+          const result = JSON.parse(match[0]);
+          let total = 0;
+          result.items.forEach(i => total += i.price);
+          result.total = total;
+          setBomResult(result);
+          setBomStatus('success');
+        } catch (e) {
+          console.error("BOM JSON Parse Error:", e);
+          setBomStatus('error');
+        }
       } else {
         setBomStatus('error');
       }
