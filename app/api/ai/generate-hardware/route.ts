@@ -673,7 +673,7 @@ async function analyzeRequirement(requirement: string) {
     const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ALIYUN_API_KEY}`,
+        'Authorization': `Bearer ${process.env.DASHSCOPE_API_KEY || process.env.NEXT_PUBLIC_ALIYUN_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

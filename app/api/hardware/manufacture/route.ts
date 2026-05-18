@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
       const aiResponse = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.DASHSCOPE_KEY}`,
+          'Authorization': `Bearer ${process.env.DASHSCOPE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

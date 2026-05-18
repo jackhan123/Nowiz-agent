@@ -5,7 +5,7 @@ import ThreeDGeneration from '../components/ThreeDGeneration';
 
 // 阿里云API配置（前端直接调用）
 const API_CONFIG = {
-  apiKey: process.env.NEXT_PUBLIC_ALIYUN_API_KEY || process.env.DASHSCOPE_KEY || '',
+  apiKey: process.env.NEXT_PUBLIC_ALIYUN_API_KEY || process.env.DASHSCOPE_API_KEY || '',
   endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   model: 'qwen-plus'
 };
