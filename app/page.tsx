@@ -183,15 +183,30 @@ export default function HomePage() {
 
       // 检查是否包含 JSON (status: completed)
       if (fullContent.includes('"status": "completed"')) {
-        const match = fullContent.match(/\\{[\\s\\S]*\\}/);
+        const match = fullContent.match(/\{[\s\S]*\}/);
         if (match) {
-          const result = JSON.parse(match[0]);
-          setCurrentRequirementReport(result.full_report);
+          try {
+            const result = JSON.parse(match[0]);
+            setCurrentRequirementReport(result.full_report);
+            setMessages(prev => {
+              const newMsgs = [...prev];
+              newMsgs[aiMsgIndex].content = `分析完成：${result.project_name}\n\n${result.summary}`;
+              newMsgs[aiMsgIndex].isStreaming = false;
+              newMsgs[aiMsgIndex].isReportReady = true;
+              return newMsgs;
+            });
+          } catch (e) {
+            console.error("JSON parse error:", e);
+            setMessages(prev => {
+              const newMsgs = [...prev];
+              newMsgs[aiMsgIndex].isStreaming = false;
+              return newMsgs;
+            });
+          }
+        } else {
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[aiMsgIndex].content = `分析完成：${result.project_name}\n\n${result.summary}`;
             newMsgs[aiMsgIndex].isStreaming = false;
-            newMsgs[aiMsgIndex].isReportReady = true;
             return newMsgs;
           });
         }
