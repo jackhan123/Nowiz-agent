@@ -1,140 +1,42 @@
-# AI 硬件实验室 🚀
+# Coshape AI 共创工作台
 
-用 AI 设计你的硬件项目 - 输入想法，自动生成完整硬件方案和 BOM 清单。
+根据用户提供的 PRD 制作的浏览器交互原型。暖白、瑞士红和炭黑延续已确认的品牌方向。
 
-## 快速开始
+## 可体验的功能
 
-### 1. 安装依赖
+- 两种程序化义肢示意模型：小腿、前臂；左右侧切换。
+- 本地 Three.js 3D 渲染、拖动与键盘旋转、缩放、自动旋转和网格查看。
+- 流线、植物、几何和星点程序化图案；颜色、疏密、缩放、旋转、表面效果。
+- 上下区域遮罩，局部修改时保留另一区域。
+- 常见中文设计指令解析，明确标注为本地规则演示。
+- 浏览器本地存储、方案切换、撤销、重做、版本对比。
+- 2048px PNG 贴图、当前 3D 视角 PNG、JSON 设计说明导出。
+- 响应式布局、大字模式、键盘控制和弹窗焦点管理。
 
-```bash
-npm install
-```
+## 范围
 
-### 2. 配置 API Key
+左侧现支持用户自行配置的文本模型 API：DeepSeek、OpenAI Responses、通义千问、Claude Messages，以及许可域名内的兼容服务。密钥只在页面会话内存中保留，经同源 `/api/chat` 后端转发，不写入浏览器存储、源文件、服务端数据库或日志。模型返回的编辑参数经过白名单校验，再应用到已有程序化图案；未接入图像生成、图片上传、语音、用户账户、云端协作或制造服务。
 
-编辑 `.env.local` 文件，填入你的 OpenAI API Key：
+模型为示意模型，不包含真实设备或经过确认的测量数据；预览与材质效果不代表制造验证。
 
-```bash
-OPENAI_API_KEY=sk-your-api-key-here
-```
+## 运行与部署
 
-**获取 API Key 的方式：**
+站点已从纯静态站迁移至 Sites Vinext Worker。前端源文件位于 `public/studio/`；主页转向工作台。API 路由在 `app/api/chat/route.ts`，适配与校验在 `lib/design-api.mjs`。运行 `npm run dev` 本地开发，`npm run build` 构建；部署产物位于 `dist/`，不要直接编辑产物。
+Sites 项目身份保存在 `.openai/hosting.json`；后续应复用此身份。
 
-#### 方案 A：OpenAI（推荐，效果最好）
-- 访问 https://platform.openai.com/api-keys
-- 注册并创建 API Key
-- 模型：`gpt-4o` 或 `gpt-4-turbo`
+## API 使用
 
-#### 方案 B：阿里云通义千问（国内可用）
-```bash
-OPENAI_API_KEY=your_aliyun_api_key
-OPENAI_API_ENDPOINT=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
-OPENAI_MODEL_NAME=qwen-plus
-```
-- 访问 https://dashscope.aliyun.com/
-- 开通灵积模型服务
-- 获取 API Key
+1. 在“一起设计”上方选择“API 对话”。
+2. 选择服务商，填写已开通的模型与该厂商的 API Key。
+3. 如需不同地区或阿里云工作空间地址，展开“接口地址与协议”。
+4. “测试连接”会实际发送一个极短的模型请求，可能产生厂商费用；“启用 API”后即可对话。
+5. 默认只发送本轮输入与当前外观参数。用户开启“携带最近对话”后，才附加最多十条对话；超出请求预算时自动缩减旧消息。
+6. 刷新后需要重新填写密钥。普通的服务商、模型和 Base URL 偏好会保存在本机。
 
-#### 方案 C：DeepSeek（低成本）
-```bash
-OPENAI_API_KEY=your_deepseek_api_key
-OPENAI_API_ENDPOINT=https://api.deepseek.com/v1/chat/completions
-OPENAI_MODEL_NAME=deepseek-chat
-```
-- 访问 https://platform.deepseek.com/
-- 价格非常便宜（约 OpenAI 的 1/10）
+后端只访问许可的官方 HTTPS 域名，禁止重定向和私有网络目标。自建网关需在 `lib/design-api.mjs` 中明确加入许可列表。没有公用的服务端模型密钥，也没有免费调用额度。
 
-### 3. 运行项目
+## 验证
 
-```bash
-npm run dev
-```
+`node --test tests/design-api.test.mjs` 覆盖三种协议、请求限制、错误映射、区域保护与参数校验。厂商响应通过模拟验证；真实可用性仍依赖用户的密钥、模型权限、地区与余额。
 
-访问 http://localhost:3000
-
-## 功能特性
-
-✅ **AI 驱动**：基于大语言模型生成专业硬件方案  
-✅ **详细 BOM**：包含具体型号、规格、价格、供应商  
-✅ **全面覆盖**：主控、传感器、电源、外壳全方位设计  
-✅ **一键导出**：复制所有内容到剪贴板  
-✅ **快速示例**：点击示例快速体验  
-✅ **响应式设计**：支持手机/平板/电脑访问
-
-## 技术栈
-
-- **前端**：Next.js 14 + React + TypeScript
-- **样式**：Tailwind CSS
-- **AI**：OpenAI API (兼容多种模型)
-- **图标**：Lucide React
-- **部署**：Vercel（一键部署）
-
-## 部署到 Vercel
-
-1. 推送代码到 GitHub
-2. 访问 https://vercel.com/new
-3. 导入你的 GitHub 仓库
-4. 添加环境变量：`OPENAI_API_KEY`
-5. 点击 Deploy
-
-## 使用示例
-
-输入：**"智能台灯"**
-
-AI 将生成：
-- 核心主控推荐（ESP32-S3）
-- 传感器列表（光照传感器、触摸传感器）
-- 显示模块（OLED 屏幕）
-- 电源方案（USB Type-C + 锂电池）
-- 工业设计建议（3D 打印外壳）
-- 完整 BOM 清单（包含具体型号和价格）
-
-## 项目结构
-
-```
-Newiz/
-├── app/
-│   ├── api/
-│   │   └── generate-hardware/
-│   │       └── route.ts          # AI 生成 API
-│   ├── globals.css               # 全局样式
-│   ├── layout.tsx                # 根布局
-│   └── page.tsx                  # 主页面
-├── .env.local                    # 环境变量（不提交到 git）
-├── package.json
-├── tailwind.config.ts
-└── tsconfig.json
-```
-
-## 注意事项
-
-⚠️ **免责声明**：AI 生成的方案仅供参考，实际制作前请咨询专业人士  
-⚠️ **价格说明**：BOM 价格为估算值，以实际采购为准  
-⚠️ **安全提示**：涉及电池、高压的项目请注意用电安全
-
-## 常见问题
-
-### Q: API 调用失败？
-A: 检查 `.env.local` 中的 API Key 是否正确，确保有足够的额度
-
-### Q: 生成速度慢？
-A: 正常现象，AI 生成需要 5-15 秒，请耐心等待
-
-### Q: 想修改 Prompt？
-A: 编辑 `app/api/generate-hardware/route.ts` 中的 `SYSTEM_PROMPT`
-
-### Q: 支持其他语言模型吗？
-A: 支持所有兼容 OpenAI API 格式的模型（通义千问、DeepSeek、Moonshot 等）
-
-## 许可证
-
-MIT License
-
-## 作者
-
-Newiz Team
-
----
-
-**Enjoy Building! 🎉**
-# Newiz
+第三方渲染依赖：Three.js r180，已本地化，许可证见 `dist/assets/THREE-LICENSE.txt`。

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#bd2434"><meta name="description" content="Coshape AI 个性化义肢共创工作台：通过对话探索贴图，在可交互 3D 模型上调整与比较，保存并导出你的设计。">
+  <title>Coshape AI · 让义肢呈现你的风格</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg"><defs>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/><path d="m20 2 .7 2.3L23 5l-2.3.7L20 8l-.7-2.3L17 5l2.3-.7Z"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8Z M3 8l9 5 9-5M12 13v9M7.5 5.5l9 5"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14"/></symbol>
+<symbol id="i-redo" viewBox="0 0 24 24"><path d="m16 4 5 5-5 5m5-5H11a7 7 0 0 0 0 14"/></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 8M4 4v6h6"/></symbol>
+<symbol id="i-rotate" viewBox="0 0 24 24"><path d="M9 5c-4 .7-7 3.4-7 7s4.5 7 10 7 10-3.1 10-7c0-2.4-1.8-4.5-4.5-5.8M9 2v6l5-3Z"/></symbol>
+<symbol id="i-compare" viewBox="0 0 24 24"><path d="M12 2v20M9 5H3v14h6m6-14h6v14h-6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5m0 3h.01"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 17 5-5 4 4 4-5 5 7"/><circle cx="8" cy="8" r="1"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1.5 7M3 4v6h6m3-4v6l4 2"/></symbol>
+</defs></svg>
+<header class="app-header">
+  <a class="brand" href="/" aria-label="Coshape AI 首页"><span class="brand-symbol"><i></i><i></i></span><span>Coshape <b>AI</b></span></a>
+  <nav aria-label="主导航"><button class="nav-item active" data-nav="studio">共创工作台</button><button class="nav-item" data-nav="designs">我的设计 <span id="design-count">3</span></button><button class="nav-item" data-nav="guide">共创指南</button></nav>
+  <div class="header-right"><span class="prototype-label"><span></span>交互原型</span><button class="avatar" id="profile-button" aria-label="本地存储说明">你</button></div>
+</header>
+<div class="project-bar"><div class="project-title"><span class="project-icon"><svg><use href="#i-box"/></svg></span><div><div class="project-breadcrumb">我的设计 <span>/</span> <strong id="project-name">流动的红</strong></div><p><span class="save-dot"></span><span id="save-status">已保存在此浏览器</span></p></div></div><div class="project-actions"><button class="text-button" id="new-project"><svg><use href="#i-plus"/></svg><span>新建项目</span></button><button class="primary-button" id="export-open"><svg><use href="#i-download"/></svg>导出设计</button></div></div>
+<div class="mobile-tabs" role="tablist" aria-label="工作区切换"><button data-panel="chat" role="tab">对话</button><button data-panel="canvas" class="active" role="tab" aria-selected="true">3D 预览</button><button data-panel="settings" role="tab">方案与调整</button></div>
+<main class="workspace">
+<aside class="chat-panel panel" data-panel-content="chat" aria-label="设计共创对话">
+  <div class="panel-heading"><div><svg class="accent"><use href="#i-spark"/></svg><h2>一起设计</h2></div><span class="small-tag" id="chat-mode-badge">DEMO</span></div>
+  <section class="api-panel" aria-label="AI 模型服务配置">
+    <div class="api-mode-toggle" role="group" aria-label="对话方式"><button type="button" data-chat-mode="demo" class="active" aria-pressed="true">本地演示</button><button type="button" data-chat-mode="api" aria-pressed="false">API 对话 <span>↗</span></button></div>
+    <details id="api-settings"><summary><span><i class="api-led" id="api-led"></i><span id="api-summary">连接你的 AI 模型</span></span><span class="api-chevron">⌄</span></summary>
+      <div class="api-settings-body">
+        <label class="api-field">服务商<select id="api-provider" aria-label="API 服务商"></select></label>
+        <label class="api-field">模型名称<input id="api-model" type="text" autocomplete="off" spellcheck="false" placeholder="填写控制台中已开通的模型"></label>
+        <label class="api-field">API Key <span class="api-key-note">仅本页会话</span><span class="api-key-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="输入所选厂商的 API Key"><button id="api-key-visibility" type="button" aria-label="显示或隐藏 API Key">显示</button></span></label>
+        <details class="api-advanced"><summary>接口地址与协议</summary><label class="api-field">Base URL<input id="api-base-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://厂商官方域名/v1"></label><label class="api-field">API 协议<select id="api-protocol"><option value="chat">Chat Completions 兼容</option><option value="responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option></select></label><p>支持官方域名与阿里云工作空间地址。自建网关需加入服务端许可列表。</p></details>
+        <label class="api-history-option"><input id="api-include-history" type="checkbox">携带最近对话（最多 10 条）</label>
+        <div class="api-settings-actions"><button type="button" id="api-test">测试连接</button><button type="button" id="api-enable">启用 API</button></div>
+        <p id="api-status" role="status">配置保存在本机；密钥不会写入存储。</p>
+        <p class="api-disclosure" id="api-disclosure">发送时经本站后端转发本次问题与当前外观参数；连接测试也会调用模型，可能产生厂商费用。</p>
+        <div class="api-settings-footer"><a id="api-docs" target="_blank" rel="noopener noreferrer">厂商文档 ↗</a><button type="button" id="api-clear-key">清除当前密钥</button></div>
+      </div>
+    </details>
+  </section>
+  <div class="chat-scroll" id="chat-messages" aria-live="polite">
+    <div class="welcome"><span class="ai-mark"><svg><use href="#i-spark"/></svg></span><h1>让义肢呈现<br>你的风格<span>。</span></h1><p>从一个想法开始。我们一起把它<br class="desktop-br">变成看得见的设计。</p></div>
+    <div class="message ai"><div class="message-label"><span class="mini-ai">✧</span>Coshape</div><div class="message-body">你好，今天想为义肢添一点什么？<br>你可以先试本地演示，也可以在上方连接自己的 AI 服务。模型会理解你的想法，并把支持的修改应用到 3D 画布。</div></div>
+    <div class="brief"><span class="eyebrow">当前设计方向</span><div id="brief-tags"><span>红白配色</span><span>流动线条</span><span>简洁留白</span></div><p><svg><use href="#i-lock"/></svg>你的选择，始终由你决定</p></div>
+  </div>
+  <div class="chat-compose"><div class="suggestions"><button data-prompt="白色多一点，图案简单一点">多一点留白</button><button data-prompt="换成植物图案">试试植物图案</button><button data-prompt="帮我做三套不同方向的方案">探索新方向 <span>↗</span></button></div><form id="chat-form"><label class="sr-only" for="chat-input">描述你的设计想法</label><textarea id="chat-input" rows="2" placeholder="描述想法，或说说想改哪里…"></textarea><div class="compose-bottom"><span id="chat-connection-label"><svg><use href="#i-spark"/></svg>本地演示 · 无需 API Key</span><button type="submit" id="send-button" aria-label="发送设计想法"><svg><use href="#i-arrow"/></svg></button></div></form><p class="privacy-note" id="chat-privacy-note">本地演示不发送外部请求</p></div>
+</aside>
+<section class="canvas-panel" data-panel-content="canvas" aria-label="3D 义肢外观预览">
+  <div class="canvas-top"><div><span class="eyebrow">你的创意，正在成形</span><div class="model-picker"><label class="sr-only" for="model-type">义肢类型</label><select id="model-type"><option value="leg">小腿义肢</option><option value="arm">前臂义肢</option></select><span class="divider"></span><label class="sr-only" for="model-side">左右侧</label><select id="model-side"><option value="left">左侧</option><option value="right">右侧</option></select></div></div><span class="canvas-status"><i></i>实时 3D 预览</span></div>
+  <div id="viewport" tabindex="0" aria-label="3D 画布。拖动旋转，滚轮缩放；方向键旋转，加减键缩放。"><div class="canvas-loader" id="canvas-loader"><span></span>正在准备你的画布</div><div class="viewport-error" id="viewport-error" hidden>此设备暂时无法启动 3D 预览。你仍可调整并导出贴图，或在支持 WebGL 的浏览器打开。</div></div>
+  <div class="view-badge"><span class="view-cross">+</span><span>外观设计概念模型</span></div>
+  <div class="compare-labels" id="compare-labels" hidden><span>之前的版本</span><span>当前设计</span></div>
+  <div class="canvas-side-tools"><button id="zoom-in" aria-label="放大" title="放大">＋</button><button id="zoom-out" aria-label="缩小" title="缩小">−</button><span></span><button id="reset-view" aria-label="复位视角" title="复位视角"><svg><use href="#i-reset"/></svg></button></div>
+  <div class="canvas-bottom"><div class="view-toolbar"><button class="view-angle active" data-angle="front">正面</button><button class="view-angle" data-angle="side">侧面</button><button class="view-angle" data-angle="back">背面</button><span></span><button id="auto-rotate" title="自动旋转" aria-label="自动旋转" aria-pressed="false"><svg><use href="#i-rotate"/></svg></button><button id="wireframe" title="显示网格" aria-label="显示网格" aria-pressed="false"><svg><use href="#i-box"/></svg></button></div><p>拖动旋转 <span>·</span> 滚轮缩放</p></div>
+  <div class="version-dock"><div class="version-top"><div><svg><use href="#i-history"/></svg><h2>设计版本</h2><span id="version-total">3 个版本</span></div><div class="version-actions"><button id="undo" aria-label="撤销" title="撤销"><svg><use href="#i-undo"/></svg></button><button id="redo" aria-label="重做" title="重做"><svg><use href="#i-redo"/></svg></button><button class="compare-button" id="compare-button" aria-pressed="false"><svg><use href="#i-compare"/></svg>对比</button></div></div><div class="version-list" id="version-list"></div></div>
+</section>
+<aside class="settings-panel panel" data-panel-content="settings" aria-label="设计参数">
+  <div class="panel-heading"><div><h2>设计调整</h2></div><button class="icon-button" id="parameter-help" aria-label="参数说明"><svg><use href="#i-help"/></svg></button></div>
+  <div class="settings-scroll">
+    <div class="settings-intro"><span class="tiny-spark">✦</span><p>一点调整，也是你的表达。<br><span>每次修改都会实时呈现在模型上。</span></p></div>
+    <section class="setting-group"><div class="setting-label"><h3>图案风格</h3><span>01</span></div><div class="pattern-grid" id="pattern-options"><button class="pattern-option active" data-pattern="flow"><span class="pattern-preview flow"></span><span>流动线条</span></button><button class="pattern-option" data-pattern="botanical"><span class="pattern-preview botanical"></span><span>自然植物</span></button><button class="pattern-option" data-pattern="geometric"><span class="pattern-preview geometric"></span><span>几何构成</span></button><button class="pattern-option" data-pattern="stars"><span class="pattern-preview stars"></span><span>星点涂鸦</span></button></div></section>
+    <section class="setting-group"><div class="setting-label"><h3>配色</h3><span>02</span></div><div class="color-fields"><label><span class="color-well"><input type="color" id="primary-color" value="#c8102e"></span><span>图案色<b id="primary-hex">#C8102E</b></span></label><label><span class="color-well"><input type="color" id="base-color" value="#f5f1e8"></span><span>底色<b id="base-hex">#F5F1E8</b></span></label></div><div class="palette-list" aria-label="预设配色"><button data-palette="red" class="palette active" aria-label="红白配色" title="红白"><i style="background:#c8102e"></i><i style="background:#f5f1e8"></i></button><button data-palette="forest" class="palette" aria-label="森林配色" title="森林"><i style="background:#345e4c"></i><i style="background:#f0ede3"></i></button><button data-palette="blue" class="palette" aria-label="海蓝配色" title="海蓝"><i style="background:#315f87"></i><i style="background:#e8edf1"></i></button><button data-palette="ink" class="palette" aria-label="墨色配色" title="墨色"><i style="background:#35363a"></i><i style="background:#eee9df"></i></button><button data-palette="orange" class="palette" aria-label="暖橙配色" title="暖橙"><i style="background:#cb784d"></i><i style="background:#f6eddf"></i></button></div></section>
+    <section class="setting-group sliders"><div class="setting-label"><h3>图案细节</h3><span>03</span></div><label class="range-label" for="density">图案疏密 <output id="density-value">40%</output></label><input id="density" type="range" min="15" max="85" value="40"><div class="range-captions"><span>更多留白</span><span>更丰富</span></div><label class="range-label" for="scale">元素大小 <output id="scale-value">100%</output></label><input id="scale" type="range" min="50" max="160" value="100"><div class="range-captions"><span>细腻</span><span>醒目</span></div><label class="range-label" for="rotation">图案旋转 <output id="rotation-value">0°</output></label><input id="rotation" type="range" min="-90" max="90" value="0"></section>
+    <section class="setting-group"><div class="setting-label"><h3>应用区域</h3><span>04</span></div><div class="segmented" id="zone-options"><button data-zone="all" class="active">全部</button><button data-zone="upper">上半部</button><button data-zone="lower">下半部</button></div><p class="setting-hint" id="zone-hint">调整将应用于外观罩全部区域</p></section>
+    <section class="setting-group"><div class="setting-label"><h3>表面效果</h3><span>05</span></div><div class="segmented" id="finish-options"><button data-finish="matte">哑光</button><button data-finish="satin" class="active">缎面</button><button data-finish="gloss">亮光</button></div></section>
+    <button class="save-version-button" id="save-version"><svg><use href="#i-plus"/></svg>保存为新版本</button><p class="model-note">贴图与预览用于设计共创。实体制作、设备兼容与临床适配需专业人员审核。</p>
+  </div>
+</aside>
+</main>
+<footer class="app-footer"><span><i></i>你的创意，你的决定</span><span>Coshape AI <span class="footer-sep">/</span> 交互原型 · 示意模型与程序化图案</span><button id="large-text" aria-pressed="false">Aa <span>大字模式</span></button></footer>
+<div class="modal-backdrop" id="modal-backdrop" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close icon-button" id="modal-close" aria-label="关闭"><svg><use href="#i-close"/></svg></button><div id="modal-content"></div></section></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body></html>
