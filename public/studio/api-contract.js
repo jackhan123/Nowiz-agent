@@ -1,3 +1,4 @@
+import { editGraphAppearance } from './node-graph.js';
 // Public provider metadata and the validated editing vocabulary shared by UI and server.
 export const PROVIDERS = [
   {id:'deepseek',name:'DeepSeek',protocol:'chat',baseUrl:'https://api.deepseek.com',model:'deepseek-flash',docs:'https://api-docs.deepseek.com/'},
@@ -44,8 +45,11 @@ export function applyDesignChanges(original,value){
   if(changes.zone)d.zone=changes.zone;if(changes.type)d.type=changes.type;if(changes.finish)d.finish=changes.finish;
   const update={};for(const key of ['primary','base','pattern','density','scale','rotation'])if(key in changes)update[key]=changes[key];
   if(Object.keys(update).length){
-    if(d.zone==='all'){Object.assign(d,update);d.regions={upper:null,lower:null};}
-    else{d.regions ||= {upper:null,lower:null};const base={};for(const key of ['primary','base','pattern','density','scale','rotation','seed'])base[key]=d[key];d.regions[d.zone]={...base,...(d.regions[d.zone]||{}),...update};}
+    if(d.zone==='all'){
+      d.nodeGraph=editGraphAppearance(d.nodeGraph,update);if(update.pattern)delete d.imageTexture;Object.assign(d,update);
+      for(const zone of ['upper','lower'])if(d.regions?.[zone]){const region=d.regions[zone];region.nodeGraph=editGraphAppearance(region.nodeGraph,update);if(update.pattern)delete region.imageTexture;Object.assign(region,update);}
+    }
+    else{d.regions ||= {upper:null,lower:null};const base={};for(const key of ['primary','base','pattern','density','scale','rotation','seed','nodeGraph','imageTexture'])base[key]=d[key];const region={...base,...(d.regions[d.zone]||{})};region.nodeGraph=editGraphAppearance(region.nodeGraph,update);if(update.pattern)delete region.imageTexture;d.regions[d.zone]={...region,...update};}
   }
   return d;
 }

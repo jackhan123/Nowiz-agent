@@ -14,7 +14,7 @@ const upstream=text=>Response.json({choices:[{message:{content:text}}]});
 test('DeepSeek request uses the proper endpoint, auth, and edit context',async()=>{
   let call;
   const response=await handleChatRequest(request(),{fetchImpl:async(url,options)=>{call={url,options,body:JSON.parse(options.body)};return upstream(JSON.stringify(result));}});
-  assert.equal(response.status,200);assert.equal(call.url,'https://api.deepseek.com/chat/completions');assert.equal(call.options.redirect,'error');assert.equal(call.options.headers.Authorization,'Bearer '+TEST_KEY);assert.equal(call.body.messages.at(-1).role,'user');assert.match(call.body.messages[0].content,/当前设计状态/);assert.equal(call.body.thinking.type,'disabled');assert.equal((await response.json()).changes.zone,'upper');
+  assert.equal(response.status,200);assert.equal(call.url,'https://api.deepseek.com/chat/completions');assert.equal(call.options.redirect,'manual');assert.equal(call.options.headers.Authorization,'Bearer '+TEST_KEY);assert.equal(call.body.messages.at(-1).role,'user');assert.match(call.body.messages[0].content,/当前设计状态/);assert.equal(call.body.thinking.type,'disabled');assert.equal((await response.json()).changes.zone,'upper');
 });
 test('OpenAI Responses has strict schema and no stored response',async()=>{
   const input={...payload,config:{...config,provider:'openai',baseUrl:'https://api.openai.com/v1',protocol:'responses',model:'gpt-4.1-mini'}};

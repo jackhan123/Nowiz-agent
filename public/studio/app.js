@@ -1,6 +1,11 @@
 import * as THREE from './assets/three.module.js';
 import { initApiPanel } from './api-connection.js';
 import { applyDesignChanges, sanitizeChanges } from './api-contract.js';
+import { renderNodeTexture } from './node-graph.js';
+import { initNodeEditor } from './node-editor.js';
+import { initDemoPrompts } from './demo-prompts.js';
+import { initWorkspaceLayout } from './workspace-layout.js';
+import { saveImageAsset, restoreImageAssets, textureImage } from './image-store.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -13,11 +18,14 @@ let design=clone(defaults), versions=[],history=[],historyIndex=0,activeId='v1',
 let compare=false,autoRotate=false,wireframe=false,modelAngle=.60,tilt=0,zoom=1;
 let scene,camera,renderer,model,compareModel,resizeObserver,renderTime=0,storageAvailable=true;
 let lastFocused=null,toastTimer,changeTimer;
-let apiConnection,apiAbort=null;
+let apiConnection,apiAbort=null,nodeEditor;
 
 function seedRandom(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function appearance(d){return {primary:d.primary,base:d.base,pattern:d.pattern,density:d.density,scale:d.scale,rotation:d.rotation,seed:d.seed};}
+function appearance(d){return {primary:d.primary,base:d.base,pattern:d.pattern,density:d.density,scale:d.scale,rotation:d.rotation,seed:d.seed,nodeGraph:d.nodeGraph,imageTexture:d.imageTexture};}
 function drawPattern(ctx,p,size){
+  if(p.imageTexture){const image=textureImage(p.imageTexture.id);if(image){ctx.save();ctx.translate(size/2,size/2);ctx.rotate((p.rotation||0)*Math.PI/180);const scale=(p.scale||100)/100;ctx.scale(scale,scale);const tile=document.createElement('canvas');tile.width=tile.height=size;tile.getContext('2d').drawImage(image,0,0,size,size);ctx.fillStyle=ctx.createPattern(tile,'repeat');ctx.translate(-size/2,-size/2);ctx.fillRect(-size*3,-size*3,size*7,size*7);ctx.restore();return;}}
+
+  if(p.nodeGraph){try{renderNodeTexture(ctx,p.nodeGraph,size);return;}catch(error){console.warn('Invalid node texture, using preset');}}
   const random=seedRandom(p.seed||2);ctx.fillStyle=p.base;ctx.fillRect(0,0,size,size);
   ctx.save();ctx.translate(size/2,size/2);ctx.rotate(p.rotation*Math.PI/180);ctx.scale(p.scale/100,p.scale/100);ctx.translate(-size/2,-size/2);ctx.fillStyle=p.primary;ctx.strokeStyle=p.primary;
   if(p.pattern==='flow'){
@@ -98,6 +106,7 @@ function rebuildModel(){
 }
 function previousVersion(){if(historyIndex>0)return{name:'上一步设计',design:history[historyIndex-1]};const index=versions.findIndex(v=>v.id===activeId);return versions[index>0?index-1:versions.length>1?1:0]||{name:'初始设计',design:clone(defaults)};}
 function updateTexture(){
+  const fallback=$('#fallback-texture');if(fallback){fallback.getContext('2d').drawImage(textureCanvas(design,384),0,0);}
   if(model){const shell=model.userData.shell;shell.material.map?.dispose();shell.material.map=makeTexture(design);shell.material.roughness=materialRoughness(design);shell.material.needsUpdate=true;}updateUI();persist();
 }
 function applyView(){if(!camera)return;const size=$('#viewport').getBoundingClientRect();camera.aspect=size.width/Math.max(1,size.height);camera.position.set(0,1.05,6.3/zoom);camera.lookAt(0,.55,0);camera.updateProjectionMatrix();if(model){model.rotation.y=modelAngle;model.rotation.x=tilt;model.scale.x=Math.abs(model.scale.x)*(design.side==='right'?-1:1);}if(compareModel){compareModel.rotation.y=modelAngle;compareModel.rotation.x=tilt;compareModel.scale.x=Math.abs(compareModel.scale.x)*(previousVersion().design.side==='right'?-1:1);}}
@@ -121,7 +130,7 @@ function init3D(){
     $('#viewport').addEventListener('wheel',e=>{e.preventDefault();zoom=THREE.MathUtils.clamp(zoom-e.deltaY*.001, .65,1.65);applyView();},{passive:false});
     $('#viewport').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','='].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')modelAngle-=.13;if(e.key==='ArrowRight')modelAngle+=.13;if(e.key==='ArrowUp')tilt=Math.max(-.4,tilt-.07);if(e.key==='ArrowDown')tilt=Math.min(.4,tilt+.07);if(e.key==='+'||e.key==='=')zoom=Math.min(1.65,zoom+.1);if(e.key==='-')zoom=Math.max(.65,zoom-.1);applyView();}});
     $('#canvas-loader').remove();const animate=time=>{requestAnimationFrame(animate);if(time-renderTime<25)return;renderTime=time;if(autoRotate&&!matchMedia('(prefers-reduced-motion: reduce)').matches){modelAngle+=.007;applyView();}renderer.render(scene,camera);};requestAnimationFrame(animate);
-  }catch(error){console.error('3D unavailable',error);$('#canvas-loader')?.remove();$('#viewport-error').hidden=false;$('.canvas-status').textContent='3D 预览暂不可用';}
+  }catch(error){console.error('3D unavailable',error);$('#canvas-loader')?.remove();$('#viewport-error').hidden=false;$('#viewport-error').innerHTML='<canvas id="fallback-texture" width="384" height="384" aria-label="当前设计平面贴图"></canvas><p>此设备暂时无法启动 3D 预览。上方为当前平面贴图，仍可使用节点设计、调整和导出。</p>';$('#fallback-texture').getContext('2d').drawImage(textureCanvas(design,384),0,0);$('.canvas-status').textContent='平面贴图预览';}
 }
 function persist(){try{localStorage.setItem(STORAGE,JSON.stringify({design,versions,activeId,projectName,messages}));$('#save-status').textContent='已保存在此浏览器';}catch{storageAvailable=false;$('#save-status').textContent='当前会话暂存 · 可导出备份';}}
 function startState(){
@@ -131,21 +140,23 @@ function startState(){
   history=[clone(design)];historyIndex=0;
 }
 function updateUI(){
+  nodeEditor?.sync(design);
+  const imageActive=!!currentAppearance().imageTexture;for(const selector of ['#primary-color','#base-color','#density',...Object.keys(palettes).map(k=>'[data-palette='+k+']')]){const field=$(selector);if(field){field.disabled=imageActive;field.title=imageActive?'AI 图像的颜色和内容需通过生成贴图修改':'';}}
+  const fallback=$('#fallback-texture');if(fallback)fallback.getContext('2d').drawImage(textureCanvas(design,384),0,0);
   const p=currentAppearance();$('#primary-color').value=p.primary;$('#base-color').value=p.base;$('#primary-hex').textContent=p.primary.toUpperCase();$('#base-hex').textContent=p.base.toUpperCase();
   for(const key of ['density','scale','rotation']){$('#'+key).value=p[key];$('#'+key+'-value').textContent=p[key]+(key==='rotation'?'°':'%');}
-  $$('.pattern-option').forEach(b=>b.classList.toggle('active',b.dataset.pattern===p.pattern));$$('[data-zone]').forEach(b=>b.classList.toggle('active',b.dataset.zone===design.zone));$$('[data-finish]').forEach(b=>b.classList.toggle('active',b.dataset.finish===design.finish));
+  $$('.pattern-option').forEach(b=>b.classList.toggle('active',!p.nodeGraph&&!p.imageTexture&&b.dataset.pattern===p.pattern));$$('[data-zone]').forEach(b=>b.classList.toggle('active',b.dataset.zone===design.zone));$$('[data-finish]').forEach(b=>b.classList.toggle('active',b.dataset.finish===design.finish));
   $$('.palette').forEach(b=>b.classList.toggle('active',palettes[b.dataset.palette][0]===p.primary&&palettes[b.dataset.palette][1]===p.base));
   $('#model-type').value=design.type;$('#model-side').value=design.side;$('#zone-hint').textContent=design.zone==='all'?'调整将应用于外观罩全部区域':`仅修改${design.zone==='upper'?'上':'下'}半部，其余图案保持不变`;
   $('#project-name').textContent=projectName;$('#design-count').textContent=versions.length;$('#version-total').textContent=versions.length+' 个版本';
   $('#undo').disabled=historyIndex<=0;$('#redo').disabled=historyIndex>=history.length-1;
-  $('#brief-tags').replaceChildren(...[patternNames[p.pattern],p.density<35?'更多留白':'适中图案',design.zone==='all'?'整体设计':design.zone==='upper'?'上半部修改':'下半部修改'].map(t=>{const el=document.createElement('span');el.textContent=t;return el;}));
+  $('#brief-tags').replaceChildren(...[p.imageTexture?'AI 原创贴图':p.nodeGraph?'节点图案':patternNames[p.pattern],p.density<35?'更多留白':'适中图案',design.zone==='all'?'整体设计':design.zone==='upper'?'上半部修改':'下半部修改'].map(t=>{const el=document.createElement('span');el.textContent=t;return el;}));
   $$('.version-card').forEach(b=>{b.classList.toggle('active',b.dataset.id===activeId);const dot=b.querySelector('.selected-dot');if(dot)dot.hidden=b.dataset.id!==activeId;});
 }
 function currentAppearance(){return design.zone==='all'?appearance(design):design.regions[design.zone]||appearance(design);}
 function pushHistory(){const serialized=JSON.stringify(design);if(JSON.stringify(history[historyIndex])===serialized)return;history=history.slice(0,historyIndex+1);history.push(clone(design));if(history.length>60)history.shift();historyIndex=history.length-1;updateUI();persist();}
 function setParameters(updates,record=true){
-  if(design.zone==='all'){Object.assign(design,updates);design.regions={upper:null,lower:null};}
-  else{design.regions[design.zone]={...currentAppearance(),...updates};}
+  design=applyDesignChanges(design,updates);
   updateTexture();if(record)pushHistory();
 }
 function thumb(d){return textureCanvas(d,150).toDataURL('image/png');}
@@ -155,42 +166,6 @@ function renderVersions(){
 function applyVersion(v){design=clone(v.design);activeId=v.id;projectName=v.name;pushHistory();rebuildModel();updateUI();renderVersions();persist();toast('已应用「'+v.name+'」');}
 function saveVersion(name){const id='v'+Date.now();const v={id,name:name||'我的设计 '+(versions.length+1),design:clone(design),time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),created:Date.now()};versions.push(v);if(versions.length>25)versions.shift();activeId=id;renderVersions();persist();if(compare)rebuildModel();return v;}
 function appendMessage(role,text,save=true,source=''){const message=document.createElement('div');message.className='message '+role;const label=document.createElement('div');label.className='message-label';label.textContent=role==='ai'?'✧  Coshape'+(source?' · '+source:''):'你';const body=document.createElement('div');body.className='message-body';body.textContent=text;message.append(label,body);$('#chat-messages').append(message);$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;if(save){messages.push({role,text,source});messages=messages.slice(-30);persist();}return message;}
-function parsePrompt(text){
-  if(/承重|接受腔|关节改造|改变结构|增大承重|控制机构|固定装置/.test(text))return {restricted:true};
-  const result={updates:{},handled:false,description:[]};
-  if(/上半|上面|上部/.test(text)){result.zone='upper';result.handled=true;result.description.push('修改上半部');}else if(/下半|下面|下部/.test(text)){result.zone='lower';result.handled=true;result.description.push('修改下半部');}else if(/全部|整体|整个/.test(text)){result.zone='all';result.handled=true;}
-  const p=(result.zone&&result.zone!=='all'?design.regions[result.zone]:null)||currentAppearance();
-  const colorWords=[[/红|red/i,'#c8102e','红色'],[/绿|植物色|forest/i,'#345e4c','绿色'],[/蓝|blue|海洋/,'#315f87','蓝色'],[/黑|墨色/,'#35363a','墨色'],[/橙|orange/i,'#cb784d','暖橙']];
-  const hex=text.match(/#[0-9a-fA-F]{6}\b/);if(hex){result.updates.primary=hex[0];result.handled=true;result.description.push('替换图案色');}else for(const [test,color,label]of colorWords)if(test.test(text)){result.updates.primary=color;result.handled=true;result.description.push('使用'+label);break;}
-  const patterns=[[/植物|叶子|花|自然/,'botanical'],[/几何|圆点|三角/,'geometric'],[/星|宇宙|涂鸦/,'stars'],[/流线|曲线|波浪|流动/,'flow']];for(const [test,value]of patterns)if(test.test(text)){result.updates.pattern=value;result.handled=true;result.description.push('采用'+patternNames[value]);break;}
-  if(/白色多|白多|留白|简单|稀疏|少一点|简洁/.test(text)){result.updates.density=Math.max(15,p.density-15);result.handled=true;result.description.push('增加留白');}
-  if(/丰富|密集|多一些图案|图案多|更密/.test(text)){result.updates.density=Math.min(85,p.density+15);result.handled=true;result.description.push('增加图案密度');}
-  if(/细一点|小一点|缩小|变细/.test(text)){result.updates.scale=Math.max(50,p.scale-20);result.handled=true;result.description.push('缩小元素');}
-  if(/大一点|放大|醒目/.test(text)){result.updates.scale=Math.min(160,p.scale+20);result.handled=true;result.description.push('放大元素');}
-  const density=text.match(/(?:密度|疏密|覆盖率)[为到\s：:]*(\d+)/);if(density){result.updates.density=Math.min(85,Math.max(15,+density[1]));result.handled=true;result.description.push('调整图案疏密');}
-  const rotate=text.match(/(?:旋转|倾斜)[为到\s：:]*(-?\d+)/);if(rotate){result.updates.rotation=Math.min(90,Math.max(-90,+rotate[1]));result.handled=true;result.description.push('旋转图案');}
-  if(/哑光|亮光|缎面/.test(text)){result.finish=/哑光/.test(text)?'matte':/亮光/.test(text)?'gloss':'satin';result.handled=true;result.description.push('调整表面光泽');}
-  if(/前臂|手臂/.test(text)){result.type='arm';result.handled=true;result.description.push('切换前臂模型');}else if(/小腿/.test(text)){result.type='leg';result.handled=true;}
-  if(/三套|三种|不同方向|新方向/.test(text)){result.candidates=true;result.handled=true;}
-  return result;
-}
-async function handleDemoPrompt(text){
-  if(busy||!text.trim())return;text=text.trim().slice(0,600);appendMessage('user',text);$('#chat-input').value='';busy=true;$('#send-button').disabled=true;
-  const pending=appendMessage('ai','正在解析修改意图…',false);await new Promise(r=>setTimeout(r,500));pending.remove();
-  const parsed=parsePrompt(text);
-  if(/撤销|上一版|恢复刚才/.test(text)){undo();appendMessage('ai','已恢复上一步设计。你可以在下方版本区继续比较或重新应用已保存方案。');}
-  else if(parsed.restricted){appendMessage('ai','这项要求涉及结构或适配，需要义肢专业人员评估。当前工作台只编辑外观贴图，不改动承重部件、接受腔或关节。你可以继续描述想调整的颜色、图案或外观区域。');}
-  else if(!parsed.handled){appendMessage('ai','当前是本地交互演示，还不能理解所有自由描述。可以试试「换成蓝色植物图案」「白色多一点」「只改上半部」或「生成三套不同方向」。右侧参数也能直接调整，结果会同步到模型。');}
-  else{
-    if(parsed.zone){design.zone=parsed.zone;updateUI();}if(parsed.finish)design.finish=parsed.finish;if(parsed.type)design.type=parsed.type;
-    if(Object.keys(parsed.updates).length)setParameters(parsed.updates,false);
-    pushHistory();if(parsed.type)rebuildModel();else updateTexture();
-    if(parsed.candidates){const base=clone(design);const variants=[{name:'流线 · 自由',pattern:'flow',density:38},{name:'植物 · 生长',pattern:'botanical',density:45},{name:'几何 · 节奏',pattern:'geometric',density:30}];for(const v of variants){const candidate={...clone(base),pattern:v.pattern,density:v.density,zone:'all',regions:{upper:null,lower:null}};versions.push({id:'v'+Date.now()+v.pattern,name:v.name,design:candidate,time:'新候选',created:Date.now()});}renderVersions();persist();appendMessage('ai','已用当前配色准备三种程序化方向：流线、植物和几何。点击下方新版本即可应用到模型，再继续调整。');}
-    else{saveVersion('共创修改 '+(versions.length+1));appendMessage('ai','已'+(parsed.description.length?parsed.description.join('，'):'更新设计范围')+'。'+(design.zone==='all'?'修改已显示在模型上。':'其余区域的图案保持不变。')+'\n已保存为新版本，可以随时比较或撤销。');}
-  }
-  busy=false;$('#send-button').disabled=false;persist();
-}
-
 function executeApiResult(result){
   if(result.action==='undo'){undo();return '已恢复上一步设计。';}
   if(result.action==='redo'){redo();return '已执行重做。';}
@@ -203,6 +178,26 @@ function executeApiResult(result){
     if(versions.length>25)versions=versions.slice(-25);renderVersions();persist();return count?'已保存 '+count+' 套候选方案，点击下方版本即可预览。':'没有新增可用方案。';
   }
   return '';
+}
+function applyGeneratedTexture(asset,zone){
+  if(zone==='all'){delete design.nodeGraph;design.imageTexture=asset;design.scale=100;design.rotation=0;design.regions={upper:null,lower:null};}
+  else{design.regions[zone]={...appearance(design),...(design.regions[zone]||{}),imageTexture:asset,nodeGraph:undefined,scale:100,rotation:0};}
+  pushHistory();rebuildModel();updateTexture();saveVersion('AI 原创贴图 '+(versions.length+1));persist();
+  toast(asset.persisted?'原创贴图已应用，并保存为新版本':'图片已应用，但本机图片库无法保存，请及时导出贴图备份');
+}
+async function handleImagePrompt(text){
+  if(busy||!text.trim())return;text=text.trim().slice(0,4000);
+  const snapshot=JSON.stringify(design),zone=design.zone;
+  appendMessage('user',text);$('#chat-input').value='';busy=true;apiAbort=new AbortController();apiConnection.setBusy(true);$('#send-button').classList.add('is-stopping');$('#send-button').setAttribute('aria-label','停止生成');
+  const pending=appendMessage('ai','正在创作原创贴图，通常需要一些时间。你可以继续调整画布；生成期间再次点击发送按钮可停止等待。',false);
+  try{
+    const result=await apiConnection.generate({prompt:text},apiAbort.signal);pending.remove();
+    const asset=await saveImageAsset(result.image.dataUrl,text);
+    const message=appendMessage('ai','原创贴图已生成。');const image=document.createElement('img');image.src=result.image.dataUrl;image.className='generated-image-preview';image.alt=text;message.append(image);
+    if(JSON.stringify(design)!==snapshot){const note=document.createElement('p');note.className='generation-note';note.textContent='等待时画布已修改，当前设计已保留。';const button=document.createElement('button');button.className='api-apply-button';button.textContent='应用到当前选区';button.onclick=()=>{applyGeneratedTexture(asset,design.zone);button.disabled=true;button.textContent='已应用';};message.append(note,button);}
+    else{applyGeneratedTexture(asset,zone);appendMessage('ai','已应用到'+(zone==='all'?'整个外观罩':zone==='upper'?'上半部':'下半部')+'，并保存为新版本。');}
+  }catch(error){pending.remove();appendMessage('ai',error.name==='AbortError'?'已停止等待，当前设计保持不变。生图服务可能仍在处理，请避免立即重复生成。':error.message);$('#chat-input').value=text;}
+  finally{busy=false;apiAbort=null;apiConnection.setBusy(false);$('#send-button').classList.remove('is-stopping');$('#send-button').setAttribute('aria-label','发送设计想法');persist();}
 }
 async function handleApiPrompt(text){
   if(busy||apiConnection.isTesting||!text.trim())return;
@@ -225,7 +220,7 @@ async function handleApiPrompt(text){
   }catch(error){pending.remove();if(error.name==='AbortError')appendMessage('ai','已停止本次请求，当前画布保持不变。');else{apiConnection.showError(error.message);appendMessage('ai',error.message+'\n画布保持不变。你可以检查上方配置后重新发送。',true,source);$('#chat-input').value=text;}}
   finally{busy=false;apiAbort=null;apiConnection.setBusy(false);$('#send-button').classList.remove('is-stopping');$('#send-button').setAttribute('aria-label','发送设计想法');persist();}
 }
-function handlePrompt(text){if(busy){apiAbort?.abort();return;}if(apiConnection?.mode==='api')return handleApiPrompt(text);return handleDemoPrompt(text);}
+function handlePrompt(text){if(busy){apiAbort?.abort();return;}return $('#creation-mode').value==='image'?handleImagePrompt(text):handleApiPrompt(text);}
 function syncActiveVersion(){const matching=versions.findLast(v=>JSON.stringify(v.design)===JSON.stringify(design));activeId=matching?.id||'';}
 function undo(){if(historyIndex<=0){toast('已经是最早的一步');return;}design=clone(history[--historyIndex]);syncActiveVersion();rebuildModel();updateUI();persist();toast('已撤销上一步修改');}
 function redo(){if(historyIndex>=history.length-1)return;design=clone(history[++historyIndex]);syncActiveVersion();rebuildModel();updateUI();persist();toast('已重做');}
@@ -237,7 +232,7 @@ function exportTexture(){textureCanvas(design,2048).toBlob(blob=>{if(blob)downlo
 function exportPreview(){if(!renderer){toast('当前无法导出 3D 预览，可先导出平面贴图');return;}renderer.render(scene,camera);renderer.domElement.toBlob(blob=>{if(blob)downloadBlob(blob,'Coshape-3D-preview.png');},'image/png');toast('已导出当前视角的 3D 预览图');}
 function exportBrief(){const payload={product:'Coshape AI',project:projectName,exported_at:new Date().toISOString(),asset_kind:'exterior_design_concept',model:{type:design.type,side:design.side,source:'procedural_demo',dimensions_verified:false},design:clone(design),note:'外观贴图与数字预览概念。模型为程序化示意模型；不包含经验证的制造或临床适配数据。'};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),'Coshape-design-brief.json');toast('已导出设计参数与模型信息');}
 function exportModal(){showModal(`<span class="eyebrow">TAKE YOUR IDEAS FURTHER</span><h2 id="modal-title">把你的设计带走</h2><p>保存创作成果，或交给专业设计人员继续沟通。</p><div class="export-options"><button class="export-option" id="download-texture"><svg><use href="#i-image"/></svg><span><b>平面图案贴图</b><small>PNG · 2048 × 2048 · 当前全部区域</small></span>↗</button><button class="export-option" id="download-preview"><svg><use href="#i-box"/></svg><span><b>3D 预览图片</b><small>PNG · 保留画布当前视角与对比状态</small></span>↗</button><button class="export-option" id="download-brief"><svg><use href="#i-download"/></svg><span><b>设计说明与参数</b><small>JSON · 配色、风格、区域和模型来源</small></span>↗</button></div><p class="modal-note">这些文件用于外观设计沟通。当前为示意模型，不是可直接制造或临床使用的适配文件。</p>`);$('#download-texture').onclick=exportTexture;$('#download-preview').onclick=exportPreview;$('#download-brief').onclick=exportBrief;}
-function guideModal(){showModal(`<span class="eyebrow">A LITTLE GUIDE TO CO-CREATION</span><h2 id="modal-title">从想法，到你的设计</h2><p>无需建模经验。先试一试，再慢慢找到喜欢的样子。</p><div class="guide-step"><span>01</span><div><b>选择模型，表达想法</b><p>切换小腿或前臂示意模型。对话演示支持颜色、流线、植物、几何、星点、疏密、大小和上下区域等关键词。</p></div></div><div class="guide-step"><span>02</span><div><b>转一转，看见每一面</b><p>拖动旋转、滚轮缩放；键盘方向键也能旋转。使用右侧参数调整配色和图案，变化即时呈现。</p></div></div><div class="guide-step"><span>03</span><div><b>保留喜欢的版本</b><p>保存新版本，或点击候选方案。对比功能显示已保存的参考版本与当前设计，撤销可回到上一步。</p></div></div><div class="guide-step"><span>04</span><div><b>导出，继续共创</b><p>下载贴图、当前视角预览与设计说明。当前数据保存在浏览器中，可随时导出备份。</p></div></div><p class="modal-note">已支持多厂商文本模型 API。连接后可通过对话修改画布参数；图案仍由本地程序绘制，图片生成、上传、语音与专业协作暂未接入。</p>`);}
+function guideModal(){showModal(`<span class="eyebrow">A LITTLE GUIDE TO CO-CREATION</span><h2 id="modal-title">从想法，到你的设计</h2><p>无需建模经验。先试一试，再慢慢找到喜欢的样子。</p><div class="guide-step"><span>01</span><div><b>选择模型，表达想法</b><p>切换小腿或前臂示意模型。使用“对话调整”修改参数，或选择“生成贴图”创作原创图像。</p></div></div><div class="guide-step"><span>02</span><div><b>转一转，看见每一面</b><p>拖动旋转、滚轮缩放；键盘方向键也能旋转。使用右侧参数调整配色和图案，变化即时呈现。</p></div></div><div class="guide-step"><span>03</span><div><b>保留喜欢的版本</b><p>保存新版本，或点击候选方案。对比功能显示已保存的参考版本与当前设计，撤销可回到上一步。</p></div></div><div class="guide-step"><span>04</span><div><b>导出，继续共创</b><p>下载贴图、当前视角预览与设计说明。当前数据保存在浏览器中，可随时导出备份。</p></div></div><p class="modal-note">支持对话调整、AI 原创贴图和节点设计。贴图与版本保存在此浏览器；上传、语音与专业协作暂未接入。</p>`);}
 function designsModal(){showModal(`<span class="eyebrow">YOUR CREATIVE COLLECTION</span><h2 id="modal-title">我的设计</h2><p>保存在当前浏览器中的 ${versions.length} 个方案。选择一个，继续创作。</p><div class="saved-grid" id="saved-grid"></div>`);for(const v of versions){const b=document.createElement('button');b.className='saved-item';const img=document.createElement('img');img.src=thumb(v.design);img.alt='';const title=document.createElement('b');title.textContent=v.name;const small=document.createElement('small');small.textContent=(v.design.type==='leg'?'小腿义肢':'前臂义肢')+' · '+patternNames[v.design.pattern];b.append(img,title,small);b.onclick=()=>{applyVersion(v);closeModal();};$('#saved-grid').append(b);}}
 function newProjectModal(){showModal(`<span class="eyebrow">A NEW POSSIBILITY</span><h2 id="modal-title">从哪里开始？</h2><p>选择一个外观模型。已有方案会继续保留在“我的设计”中。</p><div class="new-types"><button class="new-type" data-new-type="leg"><svg><use href="#i-box"/></svg><b>小腿义肢外观罩</b><p>自由探索流线、纹理与图案</p></button><button class="new-type" data-new-type="arm"><svg><use href="#i-spark"/></svg><b>前臂义肢外观罩</b><p>让你的日常表达延伸到指尖</p></button></div>`);$$('[data-new-type]').forEach(b=>b.onclick=()=>{design={...clone(defaults),type:b.dataset.newType};projectName=design.type==='leg'?'新的小腿设计':'新的前臂设计';compare=false;$('#compare-button').classList.remove('active');$('#compare-button').setAttribute('aria-pressed','false');$('#compare-labels').hidden=true;modelAngle=.24;tilt=0;zoom=1;pushHistory();saveVersion(projectName);rebuildModel();closeModal();toast('新画布已准备好');});}
 
@@ -257,11 +252,21 @@ function bindUI(){
   $('#undo').onclick=undo;$('#redo').onclick=redo;$('#save-version').onclick=()=>{saveVersion();toast('已保存新版本，可在下方随时恢复');};
   $('#compare-button').onclick=()=>{compare=!compare;$('#compare-button').classList.toggle('active',compare);$('#compare-button').setAttribute('aria-pressed',compare);$('#compare-labels').hidden=!compare;rebuildModel();};
   $('#export-open').onclick=exportModal;$('#new-project').onclick=newProjectModal;$$('[data-nav]').forEach(b=>b.onclick=()=>{if(b.dataset.nav==='designs')designsModal();else if(b.dataset.nav==='guide')guideModal();else closeModal();});$('#parameter-help').onclick=guideModal;
-  $('#profile-button').onclick=()=>{showModal(`<span class="eyebrow">YOUR DESIGN, YOUR CHOICE</span><h2 id="modal-title">你的本地创作空间</h2><p>项目、对话与版本保存在当前浏览器。开启 API 对话后，将经本站后端向你选择的厂商发送问题与当前外观参数；密钥只保留在页面内存中。换设备或清除浏览器数据后，设计不会自动同步。</p><p>你可以随时通过“导出设计”保存成果。站点访问权限由站点托管服务管理。</p><p class="modal-note">本原型不需要输入年龄、身体照片或测量数据，也不会根据年龄自动指定风格。</p>`);};
+  $('#profile-button').onclick=()=>{showModal(`<span class="eyebrow">YOUR DESIGN, YOUR CHOICE</span><h2 id="modal-title">你的本地创作空间</h2><p>项目、对话与版本保存在当前浏览器。创作时将经本站服务发送你的描述与当前外观参数。AI 服务由站点统一连接，密钥保留在服务端。原创图片保存在此浏览器的图片库中。换设备或清除浏览器数据后，设计不会自动同步。</p><p>你可以随时通过“导出设计”保存成果。站点访问权限由站点托管服务管理。</p><p class="modal-note">本原型不需要输入年龄、身体照片或测量数据，也不会根据年龄自动指定风格。</p>`);};
   $('#large-text').onclick=()=>{document.body.classList.toggle('large-text');$('#large-text').setAttribute('aria-pressed',document.body.classList.contains('large-text'));};
   $$('[data-panel]').forEach(b=>b.onclick=()=>{document.body.dataset.mobilePanel=b.dataset.panel;$$('[data-panel]').forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-selected',el===b);});setTimeout(applyView,30);});
   $('#modal-close').onclick=closeModal;$('#modal-backdrop').onclick=e=>{if(e.target===$('#modal-backdrop'))closeModal();};
   document.addEventListener('keydown',e=>{if(!$('#modal-backdrop').hidden){if(e.key==='Escape')closeModal();if(e.key==='Tab'){const list=[...$('.modal').querySelectorAll('button,a,input,[tabindex="0"]')].filter(el=>!el.disabled),first=list[0],last=list[list.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}});
 }
-startState();bindUI();apiConnection=initApiPanel({notify:toast});renderVersions();messages.forEach(m=>appendMessage(m.role,m.text,false,m.source));updateUI();init3D();persist();
+function applyNodeGraph(graph){
+  const target=design.zone;
+  if(target==='all'){delete design.imageTexture;design.nodeGraph=clone(graph);design.regions={upper:null,lower:null};}
+  else{design.regions[target]={...currentAppearance(),nodeGraph:clone(graph),imageTexture:undefined};}
+  pushHistory();rebuildModel();updateTexture();saveVersion('节点图案 '+(versions.length+1));persist();toast('节点图案已应用到'+(target==='all'?'全部区域':target==='upper'?'上半部':'下半部')+'，并保存为新版本');
+}
+async function boot(){
+  startState();bindUI();initDemoPrompts();nodeEditor=initNodeEditor({onApply:applyNodeGraph,notify:toast,getDesign:()=>design});apiConnection=initApiPanel({notify:toast});initWorkspaceLayout({onResize:applyView});
+  const missing=await restoreImageAssets([design,...versions.map(v=>v.design)]);renderVersions();messages.forEach(m=>appendMessage(m.role,m.text,false,m.source));updateUI();init3D();persist();if(missing)toast('部分原创图片不在此浏览器图片库中，可使用已导出的贴图备份。');
+}
+boot();
 
